@@ -176,7 +176,15 @@ class Onion(object):
         if platform.system() == "Linux" and os.path.isdir("/home/amnesia"):
 
             def get_version(self, default=None):
-                return stem_version.Version("0.5.0-tails_stub")
+                # Get the real version from `tor --version`
+                version_str = (
+                    subprocess.check_output(["/usr/bin/tor", "--version"])
+                    .decode()
+                    .strip()
+                    .rstrip(".")
+                    .split()[-1]
+                )
+                return stem_version.Version(version_str)
 
             Controller.get_version = get_version
 
