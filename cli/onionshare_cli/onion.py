@@ -19,7 +19,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 from stem.control import Controller
-from stem import ProtocolError, SocketClosed
+from stem import ProtocolError, SocketClosed, version as stem_version
 from stem.connection import MissingPassword, UnreadableCookieFile, AuthenticationFailure
 from Crypto.PublicKey import RSA
 import base64
@@ -29,6 +29,7 @@ import subprocess
 import time
 import shlex
 import psutil
+import platform
 
 from distutils.version import LooseVersion as Version
 
@@ -169,6 +170,15 @@ class Onion(object):
 
         # Keep track of onions where it's important to gracefully close to prevent truncated downloads
         self.graceful_close_onions = []
+
+        # In Tails, monkeypatch stem's get_version()
+        # https://github.com/micahflee/onionshare/issues/1309
+        if platform.system() == "Linux" and os.path.isdir("/home/amnesia"):
+
+            def get_version(self, default=None):
+                return stem_version.Version("0.5-tails-stub")
+
+            Controller.get_version = get_version
 
     def connect(
         self,
