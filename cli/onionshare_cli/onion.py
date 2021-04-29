@@ -176,7 +176,7 @@ class Onion(object):
         if platform.system() == "Linux" and os.path.isdir("/home/amnesia"):
 
             def get_version(self, default=None):
-                return stem_version.Version("0.5-tails-stub")
+                return stem_version.Version("0.5.0-tails_stub")
 
             Controller.get_version = get_version
 
