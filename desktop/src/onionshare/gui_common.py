@@ -19,7 +19,6 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 import os
-import inspect
 import shutil
 from pkg_resources import resource_filename
 
@@ -391,7 +390,7 @@ class GuiCommon:
         elif self.common.platform == "Darwin":
             base_path = self.get_resource_path("tor")
             tor_path = os.path.join(base_path, "tor")
-            obfs4proxy_file_path = os.path.join(base_path, "obfs4proxy.exe")
+            obfs4proxy_file_path = os.path.join(base_path, "obfs4proxy")
             tor_geo_ip_file_path = os.path.join(base_path, "geoip")
             tor_geo_ipv6_file_path = os.path.join(base_path, "geoip6")
         elif self.common.platform == "BSD":

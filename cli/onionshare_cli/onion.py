@@ -28,11 +28,9 @@ import tempfile
 import subprocess
 import time
 import shlex
-import getpass
 import psutil
 
 from distutils.version import LooseVersion as Version
-from .settings import Settings
 
 
 class TorErrorAutomatic(Exception):
@@ -518,13 +516,12 @@ class Onion(object):
                         self.settings.get("control_port_address"),
                         self.settings.get("control_port_port"),
                     )
-                else:
-                    print(
-                        "Can't connect to the Tor controller using socket file {}.".format(
-                            self.settings.get("socket_file_path")
-                        )
+                print(
+                    "Can't connect to the Tor controller using socket file {}.".format(
+                        self.settings.get("socket_file_path")
                     )
-                    raise TorErrorSocketFile(self.settings.get("socket_file_path"))
+                )
+                raise TorErrorSocketFile(self.settings.get("socket_file_path"))
 
             # Try authenticating
             try:
@@ -753,21 +750,21 @@ class Onion(object):
                     # Wait for Tor rendezvous circuits to close
                     # Catch exceptions to prevent crash on Ctrl-C
                     try:
-                        rendevouz_circuit_ids = []
+                        rendezvous_circuit_ids = []
                         for c in self.c.get_circuits():
                             if (
                                 c.purpose == "HS_SERVICE_REND"
                                 and c.rend_query in self.graceful_close_onions
                             ):
-                                rendevouz_circuit_ids.append(c.id)
+                                rendezvous_circuit_ids.append(c.id)
 
-                        symbols = [c for c in "\\|/-"]
+                        symbols = list("\\|/-")
                         symbols_i = 0
 
                         while True:
                             num_rend_circuits = 0
                             for c in self.c.get_circuits():
-                                if c.id in rendevouz_circuit_ids:
+                                if c.id in rendezvous_circuit_ids:
                                     num_rend_circuits += 1
 
                             if num_rend_circuits == 0:
@@ -843,9 +840,6 @@ class Onion(object):
             # Import the key
             key = RSA.importKey(base64.b64decode(key))
             # Is this a v2 Onion key? (1024 bits) If so, we should keep using it.
-            if key.n.bit_length() == 1024:
-                return True
-            else:
-                return False
+            return key.n.bit_length() == 1024
         except:
             return False

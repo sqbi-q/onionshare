@@ -17,17 +17,11 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
-
-import hmac
 import logging
 import os
 import queue
-import socket
-import sys
-import tempfile
 import requests
 from distutils.version import LooseVersion as Version
-from urllib.request import urlopen
 
 import flask
 from flask import (
@@ -316,7 +310,7 @@ class Web:
         if not self.settings.get("website", "disable_csp") or self.mode != "website":
             r.headers.set(
                 "Content-Security-Policy",
-                "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:;",
+                "default-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; img-src 'self' data:;",
             )
         return r
 
@@ -366,12 +360,17 @@ class Web:
         # Shutdown the flask service
         try:
             func = request.environ.get("werkzeug.server.shutdown")
-            if func is None:
+            if func is None and self.mode != "chat":
                 raise RuntimeError("Not running with the Werkzeug Server")
             func()
         except:
             pass
+
         self.running = False
+
+        # If chat, shutdown the socket server
+        if self.mode == "chat":
+            self.socketio.stop()
 
     def start(self, port):
         """

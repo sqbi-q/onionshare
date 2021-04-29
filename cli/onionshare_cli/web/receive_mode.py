@@ -21,6 +21,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import os
 import tempfile
 import json
+import requests
 from datetime import datetime
 from flask import Request, request, render_template, make_response, flash, redirect
 from werkzeug.utils import secure_filename
@@ -63,7 +64,9 @@ class ReceiveModeWeb:
             self.web.add_request(self.web.REQUEST_LOAD, request.path)
             r = make_response(
                 render_template(
-                    "receive.html", static_url_path=self.web.static_url_path
+                    "receive.html",
+                    static_url_path=self.web.static_url_path,
+                    title=self.web.settings.get("general", "title"),
                 )
             )
             return self.web.add_security_headers(r)
@@ -100,6 +103,18 @@ class ReceiveModeWeb:
                         f"/upload, uploaded {f.filename}, saving to {local_path}",
                     )
                     print(f"\nReceived: {local_path}")
+
+            # Send webhook if configured
+            if (
+                self.web.settings.get("receive", "webhook_url")
+                and not request.upload_error
+                and len(files) > 0
+            ):
+                if len(files) == 1:
+                    file_msg = "1 file"
+                else:
+                    file_msg = f"{len(files)} files"
+                self.send_webhook_notification(f"{file_msg} uploaded to OnionShare")
 
             if request.upload_error:
                 self.common.log(
@@ -155,6 +170,7 @@ class ReceiveModeWeb:
                             "new_body": render_template(
                                 "thankyou.html",
                                 static_url_path=self.web.static_url_path,
+                                title=self.web.settings.get("general", "title"),
                             )
                         }
                     )
@@ -163,6 +179,7 @@ class ReceiveModeWeb:
                     r = make_response(
                         render_template("thankyou.html"),
                         static_url_path=self.web.static_url_path,
+                        title=self.web.settings.get("general", "title"),
                     )
                     return self.web.add_security_headers(r)
 
@@ -171,6 +188,18 @@ class ReceiveModeWeb:
             if not self.can_upload:
                 return self.web.error403()
             return upload(ajax=True)
+
+    def send_webhook_notification(self, data):
+        self.common.log("ReceiveModeWeb", "send_webhook_notification", data)
+        try:
+            requests.post(
+                self.web.settings.get("receive", "webhook_url"),
+                data=data,
+                timeout=5,
+                proxies=self.web.proxies,
+            )
+        except Exception as e:
+            print(f"Webhook notification failed: {e}")
 
 
 class ReceiveModeWSGIMiddleware(object):

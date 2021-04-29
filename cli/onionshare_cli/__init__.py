@@ -144,6 +144,12 @@ def main(cwd=None):
     )
     # General args
     parser.add_argument(
+        "--title",
+        metavar="TITLE",
+        default=None,
+        help="Set a title",
+    )
+    parser.add_argument(
         "--public",
         action="store_true",
         dest="public",
@@ -193,6 +199,12 @@ def main(cwd=None):
         default=None,
         help="Receive files: Save files received to this directory",
     )
+    parser.add_argument(
+        "--webhook-url",
+        metavar="webhook_url",
+        default=None,
+        help="Receive files: URL to receive webhook notifications",
+    )
     # Website args
     parser.add_argument(
         "--disable_csp",
@@ -228,6 +240,7 @@ def main(cwd=None):
     connect_timeout = int(args.connect_timeout)
     config_filename = args.config
     persistent_filename = args.persistent
+    title = args.title
     public = bool(args.public)
     autostart_timer = int(args.autostart_timer)
     autostop_timer = int(args.autostop_timer)
@@ -235,6 +248,7 @@ def main(cwd=None):
     client_auth = bool(args.client_auth)
     autostop_sharing = not bool(args.no_autostop_sharing)
     data_dir = args.data_dir
+    webhook_url = args.webhook_url
     disable_csp = bool(args.disable_csp)
     verbose = bool(args.verbose)
 
@@ -273,6 +287,7 @@ def main(cwd=None):
 
     if mode_settings.just_created:
         # This means the mode settings were just created, not loaded from disk
+        mode_settings.set("general", "title", title)
         mode_settings.set("general", "public", public)
         mode_settings.set("general", "autostart_timer", autostart_timer)
         mode_settings.set("general", "autostop_timer", autostop_timer)
@@ -283,6 +298,8 @@ def main(cwd=None):
         if mode == "receive":
             if data_dir:
                 mode_settings.set("receive", "data_dir", data_dir)
+            if webhook_url:
+                mode_settings.set("receive", "webhook_url", webhook_url)
         if mode == "website":
             mode_settings.set("website", "disable_csp", disable_csp)
     else:
@@ -354,10 +371,23 @@ def main(cwd=None):
     # Start the onionshare app
     try:
         common.settings.load()
-        if not mode_settings.get("general", "public"):
-            web.generate_password(mode_settings.get("onion", "password"))
-        else:
+
+        if mode_settings.get("general", "public"):
             web.password = None
+        else:
+            web.generate_password(mode_settings.get("onion", "password"))
+
+        # Receive mode needs to know the tor proxy details for webhooks
+        if mode == "receive":
+            if local_only:
+                web.proxies = None
+            else:
+                (socks_address, socks_port) = onion.get_tor_socks_port()
+                web.proxies = {
+                    "http": f"socks5h://{socks_address}:{socks_port}",
+                    "https": f"socks5h://{socks_address}:{socks_port}",
+                }
+
         app = OnionShare(common, onion, local_only, autostop_timer)
         app.choose_port()
 
@@ -370,7 +400,7 @@ def main(cwd=None):
                 )
                 sys.exit()
 
-            app.start_onion_service(mode, mode_settings, False, True)
+            app.start_onion_service(mode, mode_settings, False)
             url = build_url(mode_settings, app, web)
             schedule = datetime.now() + timedelta(seconds=autostart_timer)
             if mode == "receive":
@@ -412,7 +442,7 @@ def main(cwd=None):
     except KeyboardInterrupt:
         print("")
         sys.exit()
-    except (TorTooOld, TorErrorProtocolError) as e:
+    except (TorTooOldEphemeral, TorTooOldStealth, TorErrorProtocolError) as e:
         print("")
         print(e.args[0])
         sys.exit()
@@ -514,8 +544,7 @@ def main(cwd=None):
                             print("Stopped because auto-stop timer ran out")
                             web.stop(app.port)
                             break
-                        else:
-                            web.receive_mode.can_upload = False
+                        web.receive_mode.can_upload = False
             # Allow KeyboardInterrupt exception to be handled with threads
             # https://stackoverflow.com/questions/3788208/python-threading-ignores-keyboardinterrupt-exception
             time.sleep(0.2)

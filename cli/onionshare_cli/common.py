@@ -19,13 +19,11 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import base64
 import hashlib
-import inspect
 import os
 import platform
 import random
 import socket
 import sys
-import tempfile
 import threading
 import time
 import shutil
@@ -44,6 +42,10 @@ class Common:
     """
     The Common object is shared amongst all parts of OnionShare.
     """
+
+    C_RESET = "\033[0m"
+    C_LIGHTGRAY = "\033[37m"
+    C_DARKGRAY = "\033[90m"
 
     def __init__(self, verbose=False):
         self.verbose = verbose
@@ -70,10 +72,9 @@ class Common:
         """
         if self.verbose:
             timestamp = time.strftime("%b %d %Y %X")
-
-            final_msg = f"[{timestamp}] {module}.{func}"
+            final_msg = f"{self.C_DARKGRAY}[{timestamp}]{self.C_RESET} {self.C_LIGHTGRAY}{module}.{func}{self.C_RESET}"
             if msg:
-                final_msg = f"{final_msg}: {msg}"
+                final_msg = f"{final_msg}{self.C_LIGHTGRAY}: {msg}{self.C_RESET}"
             print(final_msg)
 
     def get_resource_path(self, filename):
@@ -132,13 +133,21 @@ class Common:
             except:
                 # If for some reason we don't have the 'APPDATA' environment variable
                 # (like running tests in Linux while pretending to be in Windows)
-                onionshare_data_dir = os.path.expanduser("~/.config/onionshare")
+                try:
+                    xdg_config_home = os.environ["XDG_CONFIG_HOME"]
+                    onionshare_data_dir = f"{xdg_config_home}/onionshare"
+                except:
+                    onionshare_data_dir = os.path.expanduser("~/.config/onionshare")
         elif self.platform == "Darwin":
             onionshare_data_dir = os.path.expanduser(
                 "~/Library/Application Support/OnionShare"
             )
         else:
-            onionshare_data_dir = os.path.expanduser("~/.config/onionshare")
+            try:
+                xdg_config_home = os.environ["XDG_CONFIG_HOME"]
+                onionshare_data_dir = f"{xdg_config_home}/onionshare"
+            except:
+                onionshare_data_dir = os.path.expanduser("~/.config/onionshare")
 
         # Modify the data dir if running tests
         if getattr(sys, "onionshare_test_mode", False):
