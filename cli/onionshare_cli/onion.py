@@ -175,7 +175,7 @@ class Onion(object):
         # https://github.com/micahflee/onionshare/issues/1309
         if platform.system() == "Linux" and os.path.isdir("/home/amnesia"):
 
-            def get_version(self, default=None):
+            def get_version(stem_controller_self, default=None):
                 # Use the version shipped with OnionShare
                 version_str = (
                     subprocess.check_output([self.tor_path, "--version"])
