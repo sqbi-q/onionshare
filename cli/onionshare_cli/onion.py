@@ -176,9 +176,9 @@ class Onion(object):
         if platform.system() == "Linux" and os.path.isdir("/home/amnesia"):
 
             def get_version(self, default=None):
-                # Get the real version from `tor --version`
+                # Use the version shipped with OnionShare
                 version_str = (
-                    subprocess.check_output(["/usr/bin/tor", "--version"])
+                    subprocess.check_output([self.tor_path, "--version"])
                     .decode()
                     .strip()
                     .rstrip(".")
