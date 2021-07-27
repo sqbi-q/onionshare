@@ -462,8 +462,8 @@ def main(cwd=None):
     if mode == "livestream":
         # Start the livestream server, and start streaming the screen into it
         try:
-            livestream = Livestream(common)
-            web.livestream_mode.http_port = livestream.http_port
+            livestream = Livestream(common, onion, mode_settings, local_only)
+            web.livestream_mode.livestream = livestream
         except LivestreamErrorNginx:
             print("Livestream error: nginx isn't starting")
             sys.exit()

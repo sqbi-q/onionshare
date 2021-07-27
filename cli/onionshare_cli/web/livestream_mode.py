@@ -18,11 +18,8 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-import http.client as httplib
-import urllib.parse as urlparse
-
-from flask import request, render_template, make_response, Response
-from werkzeug.datastructures import Headers
+import os
+from flask import request, render_template, make_response
 
 
 class LivestreamModeWeb:
@@ -36,8 +33,8 @@ class LivestreamModeWeb:
 
         self.web = web
 
-        # Port of nginx's http service to proxy to
-        self.http_port = None
+        # This gets set when initializing the livestream
+        self.livestream = None
 
         self.cur_history_id = 0
         self.supports_file_requests = False
@@ -57,25 +54,12 @@ class LivestreamModeWeb:
                     "livestream.html",
                     static_url_path=self.web.static_url_path,
                     title=self.web.settings.get("general", "title"),
+                    livestream_onion_host=self.livestream.onion_host,
                 )
             )
-            return self.web.add_security_headers(r)
+            # return self.web.add_security_headers(
+            #     r, f"script-src 'self' http://{self.livestream.onion_host};"
+            # )
 
-        @self.web.app.route(
-            "/live/<filename>", methods=["GET"], provide_automatic_options=False
-        )
-        def stream(filename):
-            # Proxy a GET request to nginx
-            conn = httplib.HTTPConnection("127.0.0.1", self.http_port)
-            conn.request("GET", f"/hls/{filename}")
-            r = conn.getresponse()
-            contents = r.read()
-
-            response_headers = Headers()
-            for key, value in r.getheaders():
-                response_headers.add(key, value)
-
-            flask_response = Response(
-                response=contents, status=r.status, headers=response_headers
-            )
-            return flask_response
+            # TODO: make CSP work
+            return r

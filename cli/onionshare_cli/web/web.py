@@ -344,7 +344,7 @@ class Web:
         )
         return self.add_security_headers(r)
 
-    def add_security_headers(self, r):
+    def add_security_headers(self, r, csp_extra=None):
         """
         Add security headers to a request
         """
@@ -352,10 +352,10 @@ class Web:
             r.headers.set(header, value)
         # Set a CSP header unless in website mode and the user has disabled it
         if not self.settings.get("website", "disable_csp") or self.mode != "website":
-            r.headers.set(
-                "Content-Security-Policy",
-                "default-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; img-src 'self' data:;",
-            )
+            csp = "default-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; img-src 'self' data:;"
+            if csp_extra:
+                csp += " " + csp_extra
+            r.headers.set("Content-Security-Policy", csp)
         return r
 
     def _safe_select_jinja_autoescape(self, filename):

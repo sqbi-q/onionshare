@@ -17,7 +17,7 @@ rtmp {
             live on;
 
             hls on;
-            hls_path {{data_dir}}/webroot/hls;
+            hls_path {{webroot_dir}}/live;
             hls_fragment 10s;
             
             allow publish 127.0.0.1;
@@ -28,6 +28,7 @@ rtmp {
 
 
 http {
+    server_tokens off;
     default_type application/octet-stream;
 
     access_log off;
@@ -36,7 +37,7 @@ http {
     server {
         listen {{http_port}};
         location / {
-            root {{data_dir}}/webroot;
+            root {{webroot_dir}};
         }
     }
 

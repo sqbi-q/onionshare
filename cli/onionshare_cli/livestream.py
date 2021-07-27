@@ -34,9 +34,15 @@ class LivestreamErrorNginx(Exception):
 
 
 class Livestream:
-    def __init__(self, common):
+    def __init__(self, common, onion, mode_settings, local_only=False):
         self.common = common
         self.common.log("Livestream", "__init__")
+
+        self.onion = onion
+        self.mode_settings = mode_settings
+        self.local_only = local_only
+
+        self.onion_host = None
 
         # Prepare the data
         (
@@ -46,7 +52,8 @@ class Livestream:
             self.nginx_rtmp_module_path,
         ) = self.common.get_livestream_paths()
         self.data_dir = tempfile.TemporaryDirectory(dir=self.common.build_tmp_dir())
-        os.makedirs(os.path.join(self.data_dir.name, "webroot"), exist_ok=True)
+        self.webroot_dir = os.path.join(self.data_dir.name, "webroot")
+        os.makedirs(self.webroot_dir, exist_ok=True)
         self.rtmp_port = self.common.get_available_port(1000, 65535)
         self.http_port = self.common.get_available_port(1000, 65535)
 
@@ -56,6 +63,7 @@ class Livestream:
 
         nginx_conf_template = (
             nginx_conf_template.replace("{{data_dir}}", self.data_dir.name)
+            .replace("{{webroot_dir}}", self.webroot_dir)
             .replace("{{nginx_rtmp_module_path}}", self.nginx_rtmp_module_path)
             .replace("{{rtmp_port}}", str(self.rtmp_port))
             .replace("{{http_port}}", str(self.http_port))
@@ -110,6 +118,7 @@ class Livestream:
             raise LivestreamErrorNginx()
 
         # Start livestream
+
         self.t = threading.Thread(target=self.start)
         self.t.start()
 
@@ -127,9 +136,22 @@ class Livestream:
             stderr=subprocess.PIPE,
         )
 
-        self.t.terminate()
+        # TODO: cleanly kill the thread
+        # https://www.geeksforgeeks.org/python-different-ways-to-kill-a-thread/
 
     def start(self):
+        if self.local_only:
+            self.common.log(
+                "Livestream", "start", "--local-only, so skip starting onion service"
+            )
+            self.onion_host = f"127.0.0.1:{self.http_port}"
+        else:
+            self.common.log("Livestream", "start", "starting onion service")
+            self.onion_host = self.onion.start_onion_service(
+                "livestream", self.mode_settings, self.http_port, True
+            )
+
+        self.common.log("Livestream", "start", "running pylivestream")
         self.common.log("Livestream", "start")
         self.stream = pls.stream_microphone(
             self.pylivestream_ini_path,
