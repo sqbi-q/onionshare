@@ -73,6 +73,9 @@ def main(cwd=None):
     parser.add_argument(
         "--chat", action="store_true", dest="chat", help="Start chat server"
     )
+    parser.add_argument(
+        "--livestream", action="store_true", dest="livestream", help="Share screen"
+    )
     # Tor connection-related args
     parser.add_argument(
         "--local-only",
@@ -207,6 +210,7 @@ def main(cwd=None):
     receive = bool(args.receive)
     website = bool(args.website)
     chat = bool(args.chat)
+    livestream = bool(args.livestream)
     local_only = bool(args.local_only)
     connect_timeout = int(args.connect_timeout)
     config_filename = args.config
@@ -231,6 +235,8 @@ def main(cwd=None):
         mode = "website"
     elif chat:
         mode = "chat"
+    elif livestream:
+        mode = "livestream"
     else:
         mode = "share"
 

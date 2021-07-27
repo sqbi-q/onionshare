@@ -22,7 +22,13 @@
 
 ## Installing OnionShare CLI
 
-First, make sure you have `tor` installed. In Linux, install it through your package manager. In macOS, install it with [Homebrew](https://brew.sh): `brew install tor`.
+Install dependencies.
+
+In Linux, install these from your package manager: `sudo apt install tor ffmpeg nginx libnginx-mod-rtmp`
+
+In macOS, install it with [Homebrew](https://brew.sh): `brew install tor`
+
+TODO: Figure out how to install the other macOS dependencies
 
 Then install OnionShare CLI:
 
