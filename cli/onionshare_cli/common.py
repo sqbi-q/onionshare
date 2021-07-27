@@ -343,6 +343,15 @@ class Common:
             obfs4proxy_file_path,
         )
 
+    def get_livestream_paths(self):
+        # TODO: update this to support all platforms, including flatpak and snapcraft
+        ffmpeg_path = "/usr/bin/ffmpeg"
+        ffprobe_path = "/usr/bin/ffprobe"
+        nginx_path = "/usr/sbin/nginx"
+        nginx_rtmp_module_path = "/usr/lib/nginx/modules/ngx_rtmp_module.so"
+
+        return (ffmpeg_path, ffprobe_path, nginx_path, nginx_rtmp_module_path)
+
     def build_data_dir(self):
         """
         Returns the path of the OnionShare data directory.

@@ -34,6 +34,7 @@ from .onion import (
     TorTooOldStealth,
     Onion,
 )
+from .livestream import Livestream, LivestreamErrorNginx
 from .onionshare import OnionShare
 from .mode_settings import ModeSettings
 
@@ -458,6 +459,17 @@ def main(cwd=None):
             print("Warning: Sending a large share could take hours")
             print("")
 
+    if mode == "livestream":
+        # Start the livestream server, and start streaming the screen into it
+        try:
+            livestream = Livestream(common)
+            web.livestream_mode.http_port = livestream.http_port
+        except LivestreamErrorNginx:
+            print("Livestream error: nginx isn't starting")
+            sys.exit()
+    else:
+        livestream = None
+
     # Start OnionShare http service in new thread
     t = threading.Thread(target=web.start, args=(app.port,))
     t.daemon = True
@@ -543,6 +555,9 @@ def main(cwd=None):
         # Shutdown
         web.cleanup()
         onion.cleanup()
+
+        if livestream:
+            livestream.cleanup()
 
 
 if __name__ == "__main__":

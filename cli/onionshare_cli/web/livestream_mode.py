@@ -18,7 +18,11 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
-from flask import request, render_template, make_response, jsonify, session
+import http.client as httplib
+import urllib.parse as urlparse
+
+from flask import request, render_template, make_response, Response
+from werkzeug.datastructures import Headers
 
 
 class LivestreamModeWeb:
@@ -31,6 +35,9 @@ class LivestreamModeWeb:
         self.common.log("LivestreamModeWeb", "__init__")
 
         self.web = web
+
+        # Port of nginx's http service to proxy to
+        self.http_port = None
 
         self.cur_history_id = 0
         self.supports_file_requests = False
@@ -53,3 +60,22 @@ class LivestreamModeWeb:
                 )
             )
             return self.web.add_security_headers(r)
+
+        @self.web.app.route(
+            "/live/<filename>", methods=["GET"], provide_automatic_options=False
+        )
+        def stream(filename):
+            # Proxy a GET request to nginx
+            conn = httplib.HTTPConnection("127.0.0.1", self.http_port)
+            conn.request("GET", f"/hls/{filename}")
+            r = conn.getresponse()
+            contents = r.read()
+
+            response_headers = Headers()
+            for key, value in r.getheaders():
+                response_headers.add(key, value)
+
+            flask_response = Response(
+                response=contents, status=r.status, headers=response_headers
+            )
+            return flask_response

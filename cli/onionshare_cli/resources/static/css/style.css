@@ -399,3 +399,12 @@ a {
 a:visited {
   color: #601ca0;
 }
+
+.livestream {
+  padding: 0 1em;
+  text-align: center;
+}
+
+.livestream video {
+  width: 100%;
+}

@@ -1,0 +1,47 @@
+pid {{data_dir}}/nginx.pid;
+load_module {{nginx_rtmp_module_path}};
+
+events {
+	worker_connections 768;
+}
+
+rtmp {
+    access_log off;
+
+    server {       
+        listen {{rtmp_port}};
+        chunk_size 4000;
+
+        application live {
+            record off;
+            live on;
+
+            hls on;
+            hls_path {{data_dir}}/webroot/hls;
+            hls_fragment 10s;
+            
+            allow publish 127.0.0.1;
+            deny publish all;
+        }
+    }
+}
+
+
+http {
+    default_type application/octet-stream;
+
+    access_log off;
+    error_log {{data_dir}}/http-error.log;
+
+    server {
+        listen {{http_port}};
+        location / {
+            root {{data_dir}}/webroot;
+        }
+    }
+
+    types {
+        text/html html;
+        application/dash+xml mpd;
+    }
+}
