@@ -168,16 +168,25 @@ class Tab(QtWidgets.QWidget):
         )
         self.chat_button.clicked.connect(self.chat_mode_clicked)
 
+        self.livestream_button = NewTabButton(
+            self.common,
+            "images/{}_mode_new_tab_livestream.png".format(self.common.gui.color_mode),
+            strings._("gui_new_tab_livestream_button"),
+            strings._("gui_main_page_livestream_button"),
+        )
+        self.livestream_button.clicked.connect(self.livestream_mode_clicked)
+
         new_tab_top_layout = QtWidgets.QHBoxLayout()
         new_tab_top_layout.addStretch()
         new_tab_top_layout.addWidget(self.share_button)
         new_tab_top_layout.addWidget(self.receive_button)
+        new_tab_top_layout.addWidget(self.website_button)
         new_tab_top_layout.addStretch()
 
         new_tab_bottom_layout = QtWidgets.QHBoxLayout()
         new_tab_bottom_layout.addStretch()
-        new_tab_bottom_layout.addWidget(self.website_button)
         new_tab_bottom_layout.addWidget(self.chat_button)
+        new_tab_bottom_layout.addWidget(self.livestream_button)
         new_tab_bottom_layout.addStretch()
 
         new_tab_layout = QtWidgets.QVBoxLayout()
@@ -247,35 +256,30 @@ class Tab(QtWidgets.QWidget):
             # This is a new tab
             self.settings = ModeSettings(self.common)
 
+    def init_mode(self, mode):
+        mode.change_persistent.connect(self.change_persistent)
+
+        self.layout.addWidget(mode)
+        mode.show()
+
+        mode.init()
+        mode.server_status.server_started.connect(self.update_server_status_indicator)
+        mode.server_status.server_stopped.connect(self.update_server_status_indicator)
+        mode.start_server_finished.connect(self.update_server_status_indicator)
+        mode.stop_server_finished.connect(self.update_server_status_indicator)
+        mode.stop_server_finished.connect(self.stop_server_finished)
+        mode.start_server_finished.connect(self.clear_message)
+        mode.server_status.button_clicked.connect(self.clear_message)
+        mode.server_status.url_copied.connect(self.copy_url)
+        mode.server_status.hidservauth_copied.connect(self.copy_hidservauth)
+
     def share_mode_clicked(self):
         self.common.log("Tab", "share_mode_clicked")
         self.mode = self.common.gui.MODE_SHARE
         self.new_tab.hide()
 
         self.share_mode = ShareMode(self)
-        self.share_mode.change_persistent.connect(self.change_persistent)
-
-        self.layout.addWidget(self.share_mode)
-        self.share_mode.show()
-
-        self.share_mode.init()
-        self.share_mode.server_status.server_started.connect(
-            self.update_server_status_indicator
-        )
-        self.share_mode.server_status.server_stopped.connect(
-            self.update_server_status_indicator
-        )
-        self.share_mode.start_server_finished.connect(
-            self.update_server_status_indicator
-        )
-        self.share_mode.stop_server_finished.connect(
-            self.update_server_status_indicator
-        )
-        self.share_mode.stop_server_finished.connect(self.stop_server_finished)
-        self.share_mode.start_server_finished.connect(self.clear_message)
-        self.share_mode.server_status.button_clicked.connect(self.clear_message)
-        self.share_mode.server_status.url_copied.connect(self.copy_url)
-        self.share_mode.server_status.hidservauth_copied.connect(self.copy_hidservauth)
+        self.init_mode(self.share_mode)
 
         self.change_title.emit(self.tab_id, strings._("gui_tab_name_share"))
 
@@ -288,31 +292,7 @@ class Tab(QtWidgets.QWidget):
         self.new_tab.hide()
 
         self.receive_mode = ReceiveMode(self)
-        self.receive_mode.change_persistent.connect(self.change_persistent)
-
-        self.layout.addWidget(self.receive_mode)
-        self.receive_mode.show()
-
-        self.receive_mode.init()
-        self.receive_mode.server_status.server_started.connect(
-            self.update_server_status_indicator
-        )
-        self.receive_mode.server_status.server_stopped.connect(
-            self.update_server_status_indicator
-        )
-        self.receive_mode.start_server_finished.connect(
-            self.update_server_status_indicator
-        )
-        self.receive_mode.stop_server_finished.connect(
-            self.update_server_status_indicator
-        )
-        self.receive_mode.stop_server_finished.connect(self.stop_server_finished)
-        self.receive_mode.start_server_finished.connect(self.clear_message)
-        self.receive_mode.server_status.button_clicked.connect(self.clear_message)
-        self.receive_mode.server_status.url_copied.connect(self.copy_url)
-        self.receive_mode.server_status.hidservauth_copied.connect(
-            self.copy_hidservauth
-        )
+        self.init_mode(self.receive_mode)
 
         self.change_title.emit(self.tab_id, strings._("gui_tab_name_receive"))
 
@@ -325,31 +305,7 @@ class Tab(QtWidgets.QWidget):
         self.new_tab.hide()
 
         self.website_mode = WebsiteMode(self)
-        self.website_mode.change_persistent.connect(self.change_persistent)
-
-        self.layout.addWidget(self.website_mode)
-        self.website_mode.show()
-
-        self.website_mode.init()
-        self.website_mode.server_status.server_started.connect(
-            self.update_server_status_indicator
-        )
-        self.website_mode.server_status.server_stopped.connect(
-            self.update_server_status_indicator
-        )
-        self.website_mode.start_server_finished.connect(
-            self.update_server_status_indicator
-        )
-        self.website_mode.stop_server_finished.connect(
-            self.update_server_status_indicator
-        )
-        self.website_mode.stop_server_finished.connect(self.stop_server_finished)
-        self.website_mode.start_server_finished.connect(self.clear_message)
-        self.website_mode.server_status.button_clicked.connect(self.clear_message)
-        self.website_mode.server_status.url_copied.connect(self.copy_url)
-        self.website_mode.server_status.hidservauth_copied.connect(
-            self.copy_hidservauth
-        )
+        self.init_mode(self.website_mode)
 
         self.change_title.emit(self.tab_id, strings._("gui_tab_name_website"))
 
@@ -362,29 +318,22 @@ class Tab(QtWidgets.QWidget):
         self.new_tab.hide()
 
         self.chat_mode = ChatMode(self)
-        self.chat_mode.change_persistent.connect(self.change_persistent)
-
-        self.layout.addWidget(self.chat_mode)
-        self.chat_mode.show()
-
-        self.chat_mode.init()
-        self.chat_mode.server_status.server_started.connect(
-            self.update_server_status_indicator
-        )
-        self.chat_mode.server_status.server_stopped.connect(
-            self.update_server_status_indicator
-        )
-        self.chat_mode.start_server_finished.connect(
-            self.update_server_status_indicator
-        )
-        self.chat_mode.stop_server_finished.connect(self.update_server_status_indicator)
-        self.chat_mode.stop_server_finished.connect(self.stop_server_finished)
-        self.chat_mode.start_server_finished.connect(self.clear_message)
-        self.chat_mode.server_status.button_clicked.connect(self.clear_message)
-        self.chat_mode.server_status.url_copied.connect(self.copy_url)
-        self.chat_mode.server_status.hidservauth_copied.connect(self.copy_hidservauth)
+        self.init_mode(self.chat_mode)
 
         self.change_title.emit(self.tab_id, strings._("gui_tab_name_chat"))
+
+        self.update_server_status_indicator()
+        self.timer.start(500)
+
+    def livestream_mode_clicked(self):
+        self.common.log("Tab", "livestream_mode_clicked")
+        self.mode = self.common.gui.MODE_LIVESTREAM
+        self.new_tab.hide()
+
+        self.livestream_mode = ChatMode(self)
+        self.init_mode(self.livestream_mode)
+
+        self.change_title.emit(self.tab_id, strings._("gui_tab_name_livestream"))
 
         self.update_server_status_indicator()
         self.timer.start(500)
@@ -619,10 +568,14 @@ class Tab(QtWidgets.QWidget):
                 return self.share_mode
             elif self.mode == self.common.gui.MODE_RECEIVE:
                 return self.receive_mode
+            elif self.mode == self.common.gui.MODE_WEBSITE:
+                return self.chat_mode
             elif self.mode == self.common.gui.MODE_CHAT:
                 return self.chat_mode
+            elif self.mode == self.common.gui.MODE_LIVESTREAM:
+                return self.livestream_mode
             else:
-                return self.website_mode
+                return None
         else:
             return None
 

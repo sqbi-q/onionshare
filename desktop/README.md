@@ -17,6 +17,8 @@ If you're using Linux, install `tor` and `obfs4proxy` from either the [official 
 
 In Ubuntu 20.04 you also need the `libxcb-xinerama0` package installed.
 
+You also need to install these packages: `ffmpeg nginx libnginx-mod-rtmp`
+
 #### macOS
 
 Download and install Python 3.8.6 from https://www.python.org/downloads/release/python-386/. I downloaded `python-3.8.6-macosx10.9.pkg`. (You may need to also run `/Applications/Python\ 3.8/Install\ Certificates.command`.)
@@ -32,6 +34,8 @@ Download Tor Browser and extract the binaries:
 ```sh
 ./scripts/get-tor-osx.py
 ```
+
+TODO: Instructions for ffmpeg and nginx
 
 #### Windows
 
@@ -52,6 +56,8 @@ Download Tor Browser and extract the binaries:
 ```
 python scripts\get-tor-windows.py
 ```
+
+TODO: Instructions for ffmpeg and nginx
 
 ### Prepare the virtual environment
 

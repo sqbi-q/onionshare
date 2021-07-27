@@ -50,6 +50,7 @@ class GuiCommon:
     MODE_RECEIVE = "receive"
     MODE_WEBSITE = "website"
     MODE_CHAT = "chat"
+    MODE_LIVESTREAM = "livestream"
 
     def __init__(self, common, qtapp, local_only):
         self.common = common
