@@ -34,7 +34,7 @@ from .onion import (
     TorTooOldStealth,
     Onion,
 )
-from .livestream import Livestream, LivestreamErrorNginx
+from .screencast import Screencast, ScreencastErrorNginx
 from .onionshare import OnionShare
 from .mode_settings import ModeSettings
 
@@ -75,7 +75,7 @@ def main(cwd=None):
         "--chat", action="store_true", dest="chat", help="Start chat server"
     )
     parser.add_argument(
-        "--livestream", action="store_true", dest="livestream", help="Share screen"
+        "--screencast", action="store_true", dest="screencast", help="Screencast"
     )
     # Tor connection-related args
     parser.add_argument(
@@ -164,7 +164,7 @@ def main(cwd=None):
     )
     parser.add_argument(
         "--webhook-url",
-        metavar="webhook_url",
+        metavar="URL",
         default=None,
         help="Receive files: URL to receive webhook notifications",
     )
@@ -182,11 +182,25 @@ def main(cwd=None):
     )
     # Website args
     parser.add_argument(
-        "--disable_csp",
+        "--disable-csp",
         action="store_true",
         dest="disable_csp",
         default=False,
         help="Publish website: Disable Content Security Policy header (allows your website to use third-party resources)",
+    )
+    # Screencast args
+    parser.add_argument(
+        "--background-image",
+        metavar="FILENAME",
+        default=None,
+        help="Screencast: Use background image instead of sharing your screen",
+    )
+    parser.add_argument(
+        "--disable-mic",
+        action="store_true",
+        dest="disable_mic",
+        default=False,
+        help="Screencast: Don't include microphone audio in the screencast",
     )
     # Other
     parser.add_argument(
@@ -211,7 +225,7 @@ def main(cwd=None):
     receive = bool(args.receive)
     website = bool(args.website)
     chat = bool(args.chat)
-    livestream = bool(args.livestream)
+    screencast = bool(args.screencast)
     local_only = bool(args.local_only)
     connect_timeout = int(args.connect_timeout)
     config_filename = args.config
@@ -228,6 +242,8 @@ def main(cwd=None):
     disable_text = args.disable_text
     disable_files = args.disable_files
     disable_csp = bool(args.disable_csp)
+    background_image = args.background_image
+    disable_mic = bool(args.disable_mic)
     verbose = bool(args.verbose)
 
     if receive:
@@ -236,8 +252,8 @@ def main(cwd=None):
         mode = "website"
     elif chat:
         mode = "chat"
-    elif livestream:
-        mode = "livestream"
+    elif screencast:
+        mode = "screencast"
     else:
         mode = "share"
 
@@ -459,16 +475,18 @@ def main(cwd=None):
             print("Warning: Sending a large share could take hours")
             print("")
 
-    if mode == "livestream":
-        # Start the livestream server, and start streaming the screen into it
+    if mode == "screencast":
+        # Start the screencast server, and start streaming the screen into it
         try:
-            livestream = Livestream(common, onion, mode_settings, local_only)
-            web.livestream_mode.livestream = livestream
-        except LivestreamErrorNginx:
-            print("Livestream error: nginx isn't starting")
+            screencast = Screencast(
+                common, onion, mode_settings, local_only, background_image, disable_mic
+            )
+            web.screencast_mode.screencast = screencast
+        except ScreencastErrorNginx:
+            print("Screencast error: nginx isn't starting")
             sys.exit()
     else:
-        livestream = None
+        screencast = None
 
     # Start OnionShare http service in new thread
     t = threading.Thread(target=web.start, args=(app.port,))
@@ -556,8 +574,8 @@ def main(cwd=None):
         web.cleanup()
         onion.cleanup()
 
-        if livestream:
-            livestream.cleanup()
+        if screencast:
+            screencast.cleanup()
 
 
 if __name__ == "__main__":

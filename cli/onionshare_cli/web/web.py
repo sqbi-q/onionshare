@@ -41,7 +41,7 @@ from .share_mode import ShareModeWeb
 from .receive_mode import ReceiveModeWeb, ReceiveModeWSGIMiddleware, ReceiveModeRequest
 from .website_mode import WebsiteModeWeb
 from .chat_mode import ChatModeWeb
-from .livestream_mode import LivestreamModeWeb
+from .screencast_mode import ScreencastModeWeb
 
 
 # Stub out flask's show_server_banner function, to avoiding showing warnings that
@@ -153,7 +153,7 @@ class Web:
         self.receive_mode = None
         self.website_mode = None
         self.chat_mode = None
-        self.livestream_mode = None
+        self.screencast_mode = None
         if self.mode == "share":
             self.share_mode = ShareModeWeb(self.common, self)
         elif self.mode == "receive":
@@ -164,8 +164,8 @@ class Web:
             self.socketio = SocketIO()
             self.socketio.init_app(self.app)
             self.chat_mode = ChatModeWeb(self.common, self)
-        elif self.mode == "livestream":
-            self.livestream_mode = LivestreamModeWeb(self.common, self)
+        elif self.mode == "screencast":
+            self.screencast_mode = ScreencastModeWeb(self.common, self)
 
         self.cleanup_filenames = []
 
@@ -178,8 +178,8 @@ class Web:
             return self.website_mode
         elif self.mode == "chat":
             return self.chat_mode
-        elif self.mode == "livestream":
-            return self.livestream_mode
+        elif self.mode == "screencast":
+            return self.screencast_mode
         else:
             return None
 

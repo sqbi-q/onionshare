@@ -22,19 +22,19 @@ import os
 from flask import request, render_template, make_response
 
 
-class LivestreamModeWeb:
+class ScreencastModeWeb:
     """
-    All of the web logic for livestream mode
+    All of the web logic for screencast mode
     """
 
     def __init__(self, common, web):
         self.common = common
-        self.common.log("LivestreamModeWeb", "__init__")
+        self.common.log("ScreencastModeWeb", "__init__")
 
         self.web = web
 
-        # This gets set when initializing the livestream
-        self.livestream = None
+        # This gets set when initializing the screencast
+        self.screencast = None
 
         self.cur_history_id = 0
         self.supports_file_requests = False
@@ -43,7 +43,7 @@ class LivestreamModeWeb:
 
     def define_routes(self):
         """
-        The web app routes for livestream
+        The web app routes for screencast
         """
 
         @self.web.app.route("/", methods=["GET"], provide_automatic_options=False)
@@ -51,14 +51,14 @@ class LivestreamModeWeb:
             self.web.add_request(self.web.REQUEST_LOAD, request.path)
             r = make_response(
                 render_template(
-                    "livestream.html",
+                    "screencast.html",
                     static_url_path=self.web.static_url_path,
                     title=self.web.settings.get("general", "title"),
-                    livestream_onion_host=self.livestream.onion_host,
+                    screencast_onion_host=self.screencast.onion_host,
                 )
             )
             # return self.web.add_security_headers(
-            #     r, f"script-src 'self' http://{self.livestream.onion_host};"
+            #     r, f"script-src 'self' http://{self.screencast.onion_host};"
             # )
 
             # TODO: make CSP work

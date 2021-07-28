@@ -2,7 +2,7 @@
 <html>
 
 <head>
-    <title>{% if title %}{{ title }}{% else %}OnionShare Livestream{% endif %}</title>
+    <title>{% if title %}{{ title }}{% else %}OnionShare Screencast{% endif %}</title>
     <link href="{{ static_url_path }}/img/favicon.ico" rel="icon" type="image/x-icon">
     <link rel="stylesheet" rel="subresource" type="text/css" href="{{ static_url_path }}/css/style.css" media="all">
 </head>
@@ -11,22 +11,22 @@
 
     <header class="clearfix">
         <img class="logo" src="{{ static_url_path }}/img/logo.png" title="OnionShare">
-        <h1>{% if title %}{{ title }}{% else %}OnionShare Livestream{% endif %}</h1>
+        <h1>{% if title %}{{ title }}{% else %}OnionShare Screencast{% endif %}</h1>
     </header>
     <noscript>
         <p>
-            Livestream <b>requires JavaScript</b>, so you must set your Tor Browser security
+            Screencast <b>requires JavaScript</b>, so you must set your Tor Browser security
             level to <b>Safer</b> or <b>Standard</b> to join.
         </p>
     </noscript>
 
-    <div class="livestream">
-        <input type="hidden" id="onion-host" name="onion-host" value="{{ livestream_onion_host }}">
+    <div class="screencast">
+        <input type="hidden" id="onion-host" name="onion-host" value="{{ screencast_onion_host }}">
         <video controls id="video"></video>
     </div>
 
     <script src="{{ static_url_path }}/js/hls-2021-07-26.js"></script>
-    <script async src="{{ static_url_path }}/js/livestream.js"></script>
+    <script async src="{{ static_url_path }}/js/screencast.js"></script>
 </body>
 
 </html>

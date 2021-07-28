@@ -27,20 +27,30 @@ import threading
 import pylivestream.api as pls
 
 
-class LivestreamErrorNginx(Exception):
+class ScreencastErrorNginx(Exception):
     """
     Nginx server failed to start
     """
 
 
-class Livestream:
-    def __init__(self, common, onion, mode_settings, local_only=False):
+class Screencast:
+    def __init__(
+        self,
+        common,
+        onion,
+        mode_settings,
+        local_only=False,
+        background_image=None,
+        disable_mic=False,
+    ):
         self.common = common
-        self.common.log("Livestream", "__init__")
+        self.common.log("Screencast", "__init__")
 
         self.onion = onion
         self.mode_settings = mode_settings
         self.local_only = local_only
+        self.background_image = background_image
+        self.disable_mic = disable_mic
 
         self.onion_host = None
 
@@ -50,7 +60,7 @@ class Livestream:
             self.ffprobe_path,
             self.nginx_path,
             self.nginx_rtmp_module_path,
-        ) = self.common.get_livestream_paths()
+        ) = self.common.get_screencast_paths()
         self.data_dir = tempfile.TemporaryDirectory(dir=self.common.build_tmp_dir())
         self.webroot_dir = os.path.join(self.data_dir.name, "webroot")
         os.makedirs(self.webroot_dir, exist_ok=True)
@@ -84,14 +94,14 @@ class Livestream:
         )
 
         self.pylivestream_ini_path = os.path.join(
-            self.data_dir.name, "pylivestream.init"
+            self.data_dir.name, "pylivestream.ini"
         )
         with open(self.pylivestream_ini_path, "w") as f:
             f.write(pylivestream_ini_template)
 
         # Start nginx service
         self.common.log(
-            "Livestream",
+            "Screencast",
             "__init__",
             f"starting nginx, config path={self.nginx_conf_path}",
         )
@@ -112,18 +122,18 @@ class Livestream:
         if os.path.exists(self.nginx_pid_path):
             with open(self.nginx_pid_path) as f:
                 self.nginx_pid = int(f.read())
-            self.common.log("Livestream", "__init__", f"nginx pid: {self.nginx_pid}")
+            self.common.log("Screencast", "__init__", f"nginx pid: {self.nginx_pid}")
         else:
-            self.common.log("Livestream", "__init__", f"nginx failed to run")
-            raise LivestreamErrorNginx()
+            self.common.log("Screencast", "__init__", f"nginx failed to run")
+            raise ScreencastErrorNginx()
 
-        # Start livestream
+        # Start screencast
 
         self.t = threading.Thread(target=self.start)
         self.t.start()
 
     def cleanup(self):
-        self.common.log("Livestream", "__init__", "cleanup")
+        self.common.log("Screencast", "__init__", "cleanup")
         subprocess.run(
             [
                 self.nginx_path,
@@ -142,17 +152,20 @@ class Livestream:
     def start(self):
         if self.local_only:
             self.common.log(
-                "Livestream", "start", "--local-only, so skip starting onion service"
+                "Screencast", "start", "--local-only, so skip starting onion service"
             )
             self.onion_host = f"127.0.0.1:{self.http_port}"
         else:
-            self.common.log("Livestream", "start", "starting onion service")
+            self.common.log("Screencast", "start", "starting onion service")
             self.onion_host = self.onion.start_onion_service(
-                "livestream", self.mode_settings, self.http_port, True
+                "screencast", self.mode_settings, self.http_port, True
             )
 
-        self.common.log("Livestream", "start", "running pylivestream")
-        self.common.log("Livestream", "start")
+        # TODO: rip out pylivestram and replace with subprocess to ffmpeg
+        # and decide the command based on self.background_image and self.disable_mic
+
+        self.common.log("Screencast", "start", "running pylivestream")
+        self.common.log("Screencast", "start")
         self.stream = pls.stream_microphone(
             self.pylivestream_ini_path,
             ["localhost"],

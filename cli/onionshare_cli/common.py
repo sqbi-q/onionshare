@@ -343,7 +343,7 @@ class Common:
             obfs4proxy_file_path,
         )
 
-    def get_livestream_paths(self):
+    def get_screencast_paths(self):
         # TODO: update this to support all platforms, including flatpak and snapcraft
         ffmpeg_path = "/usr/bin/ffmpeg"
         ffprobe_path = "/usr/bin/ffprobe"
