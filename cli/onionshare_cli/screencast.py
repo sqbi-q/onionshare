@@ -23,8 +23,10 @@ import tempfile
 import subprocess
 import time
 import threading
+import time
 
-import pylivestream.api as pls
+from PIL import Image
+import PIL
 
 
 class ScreencastErrorNginx(Exception):
@@ -54,7 +56,7 @@ class Screencast:
 
         self.onion_host = None
 
-        # Prepare the data
+        # Prepare the data directory
         (
             self.ffmpeg_path,
             self.ffprobe_path,
@@ -64,8 +66,37 @@ class Screencast:
         self.data_dir = tempfile.TemporaryDirectory(dir=self.common.build_tmp_dir())
         self.webroot_dir = os.path.join(self.data_dir.name, "webroot")
         os.makedirs(self.webroot_dir, exist_ok=True)
+
+        # Find ports for nginx services
         self.rtmp_port = self.common.get_available_port(1000, 65535)
         self.http_port = self.common.get_available_port(1000, 65535)
+
+        # Prepare the background image
+        if self.background_image:
+            try:
+                image = PIL.Image.open(self.background_image)
+                w, h = image.size
+                # Make the width and height divisible by 2
+                even_w = w // 2 == w / 2
+                even_h = h // 2 == h / 2
+                if not even_w or not even_h:
+                    self.common.log(
+                        "Screencast", "__init__", "resizing background image"
+                    )
+                    if not even_w:
+                        w += 1
+                    if not even_h:
+                        h += 1
+
+                    image.resize(w, h)
+                    self.background_image = os.path.join(
+                        self.data_dir, "background.jpg"
+                    )
+                    with open(self.background_image, "w") as f:
+                        image.save(f)
+
+            except PIL.UnidentifiedImageError:
+                pass
 
         # Write nginx conf
         with open(self.common.get_resource_path("nginx.conf_template")) as f:
@@ -82,22 +113,6 @@ class Screencast:
         self.nginx_conf_path = os.path.join(self.data_dir.name, "nginx.conf")
         with open(self.nginx_conf_path, "w") as f:
             f.write(nginx_conf_template)
-
-        # Write pylivestream config
-        with open(self.common.get_resource_path("pylivestream.ini_template")) as f:
-            pylivestream_ini_template = f.read()
-
-        pylivestream_ini_template = (
-            pylivestream_ini_template.replace("{{ffmpeg_path}}", self.ffmpeg_path)
-            .replace("{{ffprobe_path}}", self.ffprobe_path)
-            .replace("{{rtmp_port}}", str(self.rtmp_port))
-        )
-
-        self.pylivestream_ini_path = os.path.join(
-            self.data_dir.name, "pylivestream.ini"
-        )
-        with open(self.pylivestream_ini_path, "w") as f:
-            f.write(pylivestream_ini_template)
 
         # Start nginx service
         self.common.log(
@@ -128,7 +143,8 @@ class Screencast:
             raise ScreencastErrorNginx()
 
         # Start screencast
-
+        self.ffmpeg_p = None
+        self.stop_thread = False
         self.t = threading.Thread(target=self.start)
         self.t.start()
 
@@ -146,8 +162,8 @@ class Screencast:
             stderr=subprocess.PIPE,
         )
 
-        # TODO: cleanly kill the thread
-        # https://www.geeksforgeeks.org/python-different-ways-to-kill-a-thread/
+        self.stop_thread = True
+        self.t.join()
 
     def start(self):
         if self.local_only:
@@ -161,14 +177,63 @@ class Screencast:
                 "screencast", self.mode_settings, self.http_port, True
             )
 
-        # TODO: rip out pylivestram and replace with subprocess to ffmpeg
-        # and decide the command based on self.background_image and self.disable_mic
+        # Build the ffmpeg command
+        cmd = []
+        if self.common.platform == "Linux":
+            # Linux, microphone and background image
+            # TODO: decide the command based on self.background_image and self.disable_mic
+            cmd += [
+                self.ffmpeg_path,
+                "-loglevel",
+                "error",
+                "-y",
+                "-loop",
+                "1",
+                "-f",
+                "image2",
+                "-i",
+                self.background_image,
+                "-f",
+                "pulse",
+                "-i",
+                "default",
+                "-codec:v",
+                "libx264",
+                "-pix_fmt",
+                "yuv420p",
+                "-preset",
+                "veryfast",
+                "-b:v",
+                "1200k",
+                "-r",
+                "30.0",
+                "-g",
+                "60.0",
+                "-codec:a",
+                "aac",
+                "-b:a",
+                "128k",
+                "-ar",
+                "44100",
+                "-maxrate",
+                "1200k",
+                "-bufsize",
+                "128k",
+                "-shortest",
+                "-strict",
+                "experimental",
+                "-f",
+                "flv",
+                f"rtmp://127.0.0.1:{self.rtmp_port}/live/stream",
+            ]
 
-        self.common.log("Screencast", "start", "running pylivestream")
-        self.common.log("Screencast", "start")
-        self.stream = pls.stream_microphone(
-            self.pylivestream_ini_path,
-            ["localhost"],
-            still_image="/home/user/Pictures/wallpaper/wp3026212-stellaris-wallpapers.png",
-            assume_yes=True,
+        self.common.log("Screencast", "start", " ".join(cmd))
+        self.ffmpeg_p = subprocess.Popen(
+            cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE
         )
+
+        while True:
+            time.sleep(0.1)
+            if self.stop_thread:
+                self.ffmpeg_p.kill()
+                break
