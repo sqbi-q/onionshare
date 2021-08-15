@@ -97,7 +97,9 @@ class ReceiveModeWeb:
             )
             return self.web.add_security_headers(r)
 
-        @self.web.app.route("/upload", methods=["POST"], provide_automatic_options=False)
+        @self.web.app.route(
+            "/upload", methods=["POST"], provide_automatic_options=False
+        )
         def upload(ajax=False):
             """
             Handle the upload files POST request, though at this point, the files have
@@ -229,7 +231,9 @@ class ReceiveModeWeb:
                     )
                     return self.web.add_security_headers(r)
 
-        @self.web.app.route("/upload-ajax", methods=["POST"], provide_automatic_options=False)
+        @self.web.app.route(
+            "/upload-ajax", methods=["POST"], provide_automatic_options=False
+        )
         def upload_ajax_public():
             if not self.can_upload:
                 return self.web.error403()

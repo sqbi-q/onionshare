@@ -539,6 +539,7 @@ def main(cwd=None):
         web.stop(app.port)
     finally:
         # Shutdown
+        nginx.stop()
         web.cleanup()
         onion.cleanup()
 

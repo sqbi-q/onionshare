@@ -18,7 +18,6 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import subprocess
-import tempfile
 import os
 from jinja2 import Template
 
@@ -27,15 +26,16 @@ class Nginx:
     def __init__(self, common):
         self.common = common
 
-        self.nginx_dir = tempfile.TemporaryDirectory(prefix=os.path.join(self.common.build_tmp_dir(), "nginx"))
-        self.common.log("Nginx", "__init__", f"nginx_dir={self.nginx_dir.name}")
-
-        self.pid_filename = os.path.join(self.nginx_dir.name, "nginx.pid")
-        self.error_log_filename = os.path.join(self.nginx_dir.name, "error.log")
-        self.conf_filename = os.path.join(self.nginx_dir.name, "nginx.conf")
+        self.pid_filename = os.path.join(common.build_data_dir(), "nginx.pid")
+        self.error_log_filename = os.path.join(
+            common.build_data_dir(), "nginx-error.log"
+        )
+        self.conf_filename = os.path.join(common.build_data_dir(), "nginx.conf")
 
         self.nginx_port = self.common.get_available_port()
         self.sites = []
+
+        self.common.log("Nginx", "__init__", f"{self.conf_filename}")
 
         # Build the conf file
         with open(self.common.get_resource_path("nginx_conf_template"), "r") as f:
@@ -73,23 +73,29 @@ class Nginx:
     def start(self):
         self.common.log("Nginx", "start")
         self.p = subprocess.Popen(
-            [self.nginx_path, "-c", self.conf_filename],
-            # stdout=subprocess.DEVNULL,
-            # stderr=subprocess.DEVNULL,
+            [
+                self.nginx_path,
+                "-c",
+                self.conf_filename,
+                "-g",
+                f"error_log {self.error_log_filename};",
+            ],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
         )
 
     def stop(self):
         self.common.log("Nginx", "stop")
         self.p = subprocess.Popen(
-            [self.nginx_path, "-c", self.conf_filename, "-s", "SIGQUIT"],
+            [self.nginx_path, "-c", self.conf_filename, "-s", "stop"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
-    
+
     def reload(self):
         self.common.log("Nginx", "reload")
         self.p = subprocess.Popen(
-            [self.nginx_path, "-c", self.conf_filename, "-s", "SIGHUP"],
+            [self.nginx_path, "-c", self.conf_filename, "-s", "reload"],
             stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL,
         )
