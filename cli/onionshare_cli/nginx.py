@@ -1,0 +1,95 @@
+# -*- coding: utf-8 -*-
+"""
+OnionShare | https://onionshare.org/
+
+Copyright (C) 2014-2021 Micah Lee, et al. <micah@micahflee.com>
+
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+"""
+import subprocess
+import tempfile
+import os
+from jinja2 import Template
+
+
+class Nginx:
+    def __init__(self, common):
+        self.common = common
+
+        self.nginx_dir = tempfile.TemporaryDirectory(prefix=os.path.join(self.common.build_tmp_dir(), "nginx"))
+        self.common.log("Nginx", "__init__", f"nginx_dir={self.nginx_dir.name}")
+
+        self.pid_filename = os.path.join(self.nginx_dir.name, "nginx.pid")
+        self.error_log_filename = os.path.join(self.nginx_dir.name, "error.log")
+        self.conf_filename = os.path.join(self.nginx_dir.name, "nginx.conf")
+
+        self.nginx_port = self.common.get_available_port()
+        self.sites = []
+
+        # Build the conf file
+        with open(self.common.get_resource_path("nginx_conf_template"), "r") as f:
+            self.template = Template(f.read())
+        self.write_nginx_conf()
+
+        # Start the server
+        # TODO: make nginx_path work for all platforms
+        self.nginx_path = "/usr/sbin/nginx"
+        self.start()
+
+    def add_site(self, name, port):
+        self.sites.append({name: name, port: port})
+        self.write_nginx_conf()
+
+    def delete_site(self, name):
+        new_sites = []
+        for site in self.sites:
+            if site["name"] != name:
+                new_sites.append(site)
+
+        self.sites = new_sites
+        self.write_nginx_conf()
+
+    def write_nginx_conf(self):
+        config = self.template.render(
+            pid_filename=self.pid_filename,
+            error_log_filename=self.error_log_filename,
+            nginx_port=self.nginx_port,
+            sites=self.sites,
+        )
+        with open(self.conf_filename, "w") as f:
+            f.write(config)
+
+    def start(self):
+        self.common.log("Nginx", "start")
+        self.p = subprocess.Popen(
+            [self.nginx_path, "-c", self.conf_filename],
+            # stdout=subprocess.DEVNULL,
+            # stderr=subprocess.DEVNULL,
+        )
+
+    def stop(self):
+        self.common.log("Nginx", "stop")
+        self.p = subprocess.Popen(
+            [self.nginx_path, "-c", self.conf_filename, "-s", "SIGQUIT"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )
+    
+    def reload(self):
+        self.common.log("Nginx", "reload")
+        self.p = subprocess.Popen(
+            [self.nginx_path, "-c", self.conf_filename, "-s", "SIGHUP"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        )

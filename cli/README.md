@@ -22,7 +22,7 @@
 
 ## Installing OnionShare CLI
 
-First, make sure you have `tor` installed. In Linux, install it through your package manager. In macOS, install it with [Homebrew](https://brew.sh): `brew install tor`.
+First, make sure you have `tor` and `nginx` installed. In Linux, install it through your package manager. In macOS, install it with [Homebrew](https://brew.sh): `brew install tor nginx`.
 
 Then install OnionShare CLI:
 

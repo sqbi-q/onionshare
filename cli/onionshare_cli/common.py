@@ -477,7 +477,7 @@ class Common:
         return Common.format_seconds(eta)
 
     @staticmethod
-    def get_available_port(min_port, max_port):
+    def get_available_port(min_port=1000, max_port=65535):
         """
         Find a random available port within the given range.
         """

@@ -27,6 +27,7 @@ from datetime import datetime
 from datetime import timedelta
 
 from .common import Common, CannotFindTor
+from .nginx import Nginx
 from .web import Web
 from .onion import (
     TorErrorProtocolError,
@@ -321,6 +322,9 @@ def main(cwd=None):
     if mode == "receive" and disable_text and disable_files:
         print("You cannot disable both text and files")
         sys.exit()
+
+    # Create the Nginx object
+    nginx = Nginx(common)
 
     # Create the Web object
     web = Web(common, False, mode_settings, mode)
