@@ -32,7 +32,6 @@ class Nginx:
         )
         self.conf_filename = os.path.join(common.build_data_dir(), "nginx.conf")
 
-        self.nginx_port = self.common.get_available_port()
         self.sites = []
 
         self.common.log("Nginx", "__init__", f"{self.conf_filename}")
@@ -47,9 +46,10 @@ class Nginx:
         self.nginx_path = "/usr/sbin/nginx"
         self.start()
 
-    def add_site(self, name, port):
-        self.sites.append({name: name, port: port})
+    def add_site(self, name, nginx_port, flask_port):
+        self.sites.append({name: name, nginx_port: nginx_port, flask_port: flask_port})
         self.write_nginx_conf()
+        self.reload()
 
     def delete_site(self, name):
         new_sites = []
@@ -59,12 +59,12 @@ class Nginx:
 
         self.sites = new_sites
         self.write_nginx_conf()
+        self.reload()
 
     def write_nginx_conf(self):
         config = self.template.render(
             pid_filename=self.pid_filename,
             error_log_filename=self.error_log_filename,
-            nginx_port=self.nginx_port,
             sites=self.sites,
         )
         with open(self.conf_filename, "w") as f:

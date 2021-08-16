@@ -109,11 +109,11 @@ http {
 
     {% for site in sites %}
     server {
-        listen {{ nginx_port }};
+        listen {{ site['nginx_port'] }};
         server_name {{ site['name'] }};
         charset utf-8;
         location / {
-            proxy_pass http://127.0.0.1:{{ site['port'] }};
+            proxy_pass http://127.0.0.1:{{ site['flask_port'] }};
             client_max_body_size 0;
         }
     }
