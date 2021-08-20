@@ -22,6 +22,7 @@ import os
 import queue
 import requests
 import shutil
+import subprocess
 from distutils.version import LooseVersion as Version
 
 import flask
@@ -423,17 +424,23 @@ class Web:
             except queue.Empty:
                 pass
 
-        # In Whonix, listen on 0.0.0.0 instead of 127.0.0.1 (#220)
-        if os.path.exists("/usr/share/anon-ws-base-files/workstation"):
-            host = "0.0.0.0"
-        else:
-            host = "127.0.0.1"
+        self.wsgi_p = subprocess.Popen(
+            ["gunicorn", "--bind=127.0.0.1", "--workers=2", "wsgi"]
+        )
 
         self.running = True
-        if self.mode == "chat":
-            self.socketio.run(self.app, host=host, port=port)
-        else:
-            self.app.run(host=host, port=port, threaded=True)
+
+        # # In Whonix, listen on 0.0.0.0 instead of 127.0.0.1 (#220)
+        # if os.path.exists("/usr/share/anon-ws-base-files/workstation"):
+        #     host = "0.0.0.0"
+        # else:
+        #     host = "127.0.0.1"
+
+        # self.running = True
+        # if self.mode == "chat":
+        #     self.socketio.run(self.app, host=host, port=port)
+        # else:
+        #     self.app.run(host=host, port=port, threaded=True)
 
     def stop(self, port):
         """
