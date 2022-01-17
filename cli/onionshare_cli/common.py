@@ -2,7 +2,7 @@
 """
 OnionShare | https://onionshare.org/
 
-Copyright (C) 2014-2021 Micah Lee, et al. <micah@micahflee.com>
+Copyright (C) 2014-2022 Micah Lee, et al. <micah@micahflee.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -22,6 +22,7 @@ import hashlib
 import os
 import platform
 import random
+import requests
 import socket
 import sys
 import threading
@@ -86,197 +87,206 @@ class Common:
         ╰───────────────────────────────────────────╯
         """
 
-        if self.platform == "Windows":
-            pass
-        else:
-            pass
-
-        print(
-            Back.MAGENTA + Fore.WHITE + "╭───────────────────────────────────────────╮"
-        )
-        print(
-            Back.MAGENTA
-            + Fore.WHITE
-            + "│"
-            + Fore.LIGHTMAGENTA_EX
-            + "    *            "
-            + Fore.WHITE
-            + "▄▄█████▄▄"
-            + Fore.LIGHTMAGENTA_EX
-            + "            *    "
-            + Fore.WHITE
-            + "│"
-        )
-        print(
-            Back.MAGENTA
-            + Fore.WHITE
-            + "│"
-            + Fore.WHITE
-            + "               ▄████▀▀▀████▄"
-            + Fore.LIGHTMAGENTA_EX
-            + "     *         "
-            + Fore.WHITE
-            + "│"
-        )
-        print(
-            Back.MAGENTA
-            + Fore.WHITE
-            + "│"
-            + Fore.WHITE
-            + "              ▀▀█▀       ▀██▄              "
-            + Fore.WHITE
-            + "│"
-        )
-        print(
-            Back.MAGENTA
-            + Fore.WHITE
-            + "│"
-            + Fore.LIGHTMAGENTA_EX
-            + "      *      "
-            + Fore.WHITE
-            + "▄█▄          ▀██▄             "
-            + Fore.WHITE
-            + "│"
-        )
-        print(
-            Back.MAGENTA
-            + Fore.WHITE
-            + "│"
-            + Fore.WHITE
-            + "           ▄█████▄         ███"
-            + Fore.LIGHTMAGENTA_EX
-            + "        -+-  "
-            + Fore.WHITE
-            + "│"
-        )
-        print(
-            Back.MAGENTA
-            + Fore.WHITE
-            + "│"
-            + Fore.WHITE
-            + "             ███         ▀█████▀           "
-            + Fore.WHITE
-            + "│"
-        )
-        print(
-            Back.MAGENTA
-            + Fore.WHITE
-            + "│"
-            + Fore.WHITE
-            + "             ▀██▄          ▀█▀             "
-            + Fore.WHITE
-            + "│"
-        )
-        print(
-            Back.MAGENTA
-            + Fore.WHITE
-            + "│"
-            + Fore.LIGHTMAGENTA_EX
-            + "         *    "
-            + Fore.WHITE
-            + "▀██▄       ▄█▄▄"
-            + Fore.LIGHTMAGENTA_EX
-            + "     *        "
-            + Fore.WHITE
-            + "│"
-        )
-        print(
-            Back.MAGENTA
-            + Fore.WHITE
-            + "│"
-            + Fore.LIGHTMAGENTA_EX
-            + " *             "
-            + Fore.WHITE
-            + "▀████▄▄▄████▀               "
-            + Fore.WHITE
-            + "│"
-        )
-        print(
-            Back.MAGENTA
-            + Fore.WHITE
-            + "│"
-            + Fore.WHITE
-            + "                 ▀▀█████▀▀                 "
-            + Fore.WHITE
-            + "│"
-        )
-        print(
-            Back.MAGENTA
-            + Fore.WHITE
-            + "│"
-            + Fore.LIGHTMAGENTA_EX
-            + "             -+-                     *     "
-            + Fore.WHITE
-            + "│"
-        )
-        print(
-            Back.MAGENTA
-            + Fore.WHITE
-            + "│"
-            + Fore.WHITE
-            + "   ▄▀▄               ▄▀▀ █                 "
-            + Fore.WHITE
-            + "│"
-        )
-        print(
-            Back.MAGENTA
-            + Fore.WHITE
-            + "│"
-            + Fore.WHITE
-            + "   █ █     ▀         ▀▄  █                 "
-            + Fore.WHITE
-            + "│"
-        )
-        print(
-            Back.MAGENTA
-            + Fore.WHITE
-            + "│"
-            + Fore.WHITE
-            + "   █ █ █▀▄ █ ▄▀▄ █▀▄  ▀▄ █▀▄ ▄▀▄ █▄▀ ▄█▄   "
-            + Fore.WHITE
-            + "│"
-        )
-        print(
-            Back.MAGENTA
-            + Fore.WHITE
-            + "│"
-            + Fore.WHITE
-            + "   ▀▄▀ █ █ █ ▀▄▀ █ █ ▄▄▀ █ █ ▀▄█ █   ▀▄▄   "
-            + Fore.WHITE
-            + "│"
-        )
-        print(
-            Back.MAGENTA + Fore.WHITE + "│                                           │"
-        )
-        left_spaces = (43 - len(self.version) - 1) // 2
-        right_spaces = left_spaces
-        if left_spaces + len(self.version) + 1 + right_spaces < 43:
-            right_spaces += 1
-        print(
-            Back.MAGENTA
-            + Fore.WHITE
-            + "│"
-            + Fore.WHITE
-            + f"{' '*left_spaces}v{self.version}{' '*right_spaces}"
-            + Fore.WHITE
-            + "│"
-        )
-        print(
-            Back.MAGENTA + Fore.WHITE + "│                                           │"
-        )
-        print(
-            Back.MAGENTA
-            + Fore.WHITE
-            + "│"
-            + Fore.WHITE
-            + "          https://onionshare.org/          "
-            + Fore.WHITE
-            + "│"
-        )
-        print(
-            Back.MAGENTA + Fore.WHITE + "╰───────────────────────────────────────────╯"
-        )
-        print()
+        try:
+            print(
+                Back.MAGENTA
+                + Fore.WHITE
+                + "╭───────────────────────────────────────────╮"
+            )
+            print(
+                Back.MAGENTA
+                + Fore.WHITE
+                + "│"
+                + Fore.LIGHTMAGENTA_EX
+                + "    *            "
+                + Fore.WHITE
+                + "▄▄█████▄▄"
+                + Fore.LIGHTMAGENTA_EX
+                + "            *    "
+                + Fore.WHITE
+                + "│"
+            )
+            print(
+                Back.MAGENTA
+                + Fore.WHITE
+                + "│"
+                + Fore.WHITE
+                + "               ▄████▀▀▀████▄"
+                + Fore.LIGHTMAGENTA_EX
+                + "     *         "
+                + Fore.WHITE
+                + "│"
+            )
+            print(
+                Back.MAGENTA
+                + Fore.WHITE
+                + "│"
+                + Fore.WHITE
+                + "              ▀▀█▀       ▀██▄              "
+                + Fore.WHITE
+                + "│"
+            )
+            print(
+                Back.MAGENTA
+                + Fore.WHITE
+                + "│"
+                + Fore.LIGHTMAGENTA_EX
+                + "      *      "
+                + Fore.WHITE
+                + "▄█▄          ▀██▄             "
+                + Fore.WHITE
+                + "│"
+            )
+            print(
+                Back.MAGENTA
+                + Fore.WHITE
+                + "│"
+                + Fore.WHITE
+                + "           ▄█████▄         ███"
+                + Fore.LIGHTMAGENTA_EX
+                + "        -+-  "
+                + Fore.WHITE
+                + "│"
+            )
+            print(
+                Back.MAGENTA
+                + Fore.WHITE
+                + "│"
+                + Fore.WHITE
+                + "             ███         ▀█████▀           "
+                + Fore.WHITE
+                + "│"
+            )
+            print(
+                Back.MAGENTA
+                + Fore.WHITE
+                + "│"
+                + Fore.WHITE
+                + "             ▀██▄          ▀█▀             "
+                + Fore.WHITE
+                + "│"
+            )
+            print(
+                Back.MAGENTA
+                + Fore.WHITE
+                + "│"
+                + Fore.LIGHTMAGENTA_EX
+                + "         *    "
+                + Fore.WHITE
+                + "▀██▄       ▄█▄▄"
+                + Fore.LIGHTMAGENTA_EX
+                + "     *        "
+                + Fore.WHITE
+                + "│"
+            )
+            print(
+                Back.MAGENTA
+                + Fore.WHITE
+                + "│"
+                + Fore.LIGHTMAGENTA_EX
+                + " *             "
+                + Fore.WHITE
+                + "▀████▄▄▄████▀               "
+                + Fore.WHITE
+                + "│"
+            )
+            print(
+                Back.MAGENTA
+                + Fore.WHITE
+                + "│"
+                + Fore.WHITE
+                + "                 ▀▀█████▀▀                 "
+                + Fore.WHITE
+                + "│"
+            )
+            print(
+                Back.MAGENTA
+                + Fore.WHITE
+                + "│"
+                + Fore.LIGHTMAGENTA_EX
+                + "             -+-                     *     "
+                + Fore.WHITE
+                + "│"
+            )
+            print(
+                Back.MAGENTA
+                + Fore.WHITE
+                + "│"
+                + Fore.WHITE
+                + "   ▄▀▄               ▄▀▀ █                 "
+                + Fore.WHITE
+                + "│"
+            )
+            print(
+                Back.MAGENTA
+                + Fore.WHITE
+                + "│"
+                + Fore.WHITE
+                + "   █ █     ▀         ▀▄  █                 "
+                + Fore.WHITE
+                + "│"
+            )
+            print(
+                Back.MAGENTA
+                + Fore.WHITE
+                + "│"
+                + Fore.WHITE
+                + "   █ █ █▀▄ █ ▄▀▄ █▀▄  ▀▄ █▀▄ ▄▀▄ █▄▀ ▄█▄   "
+                + Fore.WHITE
+                + "│"
+            )
+            print(
+                Back.MAGENTA
+                + Fore.WHITE
+                + "│"
+                + Fore.WHITE
+                + "   ▀▄▀ █ █ █ ▀▄▀ █ █ ▄▄▀ █ █ ▀▄█ █   ▀▄▄   "
+                + Fore.WHITE
+                + "│"
+            )
+            print(
+                Back.MAGENTA
+                + Fore.WHITE
+                + "│                                           │"
+            )
+            left_spaces = (43 - len(self.version) - 1) // 2
+            right_spaces = left_spaces
+            if left_spaces + len(self.version) + 1 + right_spaces < 43:
+                right_spaces += 1
+            print(
+                Back.MAGENTA
+                + Fore.WHITE
+                + "│"
+                + Fore.WHITE
+                + f"{' '*left_spaces}v{self.version}{' '*right_spaces}"
+                + Fore.WHITE
+                + "│"
+            )
+            print(
+                Back.MAGENTA
+                + Fore.WHITE
+                + "│                                           │"
+            )
+            print(
+                Back.MAGENTA
+                + Fore.WHITE
+                + "│"
+                + Fore.WHITE
+                + "          https://onionshare.org/          "
+                + Fore.WHITE
+                + "│"
+            )
+            print(
+                Back.MAGENTA
+                + Fore.WHITE
+                + "╰───────────────────────────────────────────╯"
+            )
+            print()
+        except:
+            # If anything fails, print a boring banner
+            print(f"OnionShare v{self.version}")
+            print("https://onionshare.org/")
+            print()
 
     def load_settings(self, config=None):
         """
@@ -313,34 +323,70 @@ class Common:
             if not tor_path:
                 raise CannotFindTor()
             obfs4proxy_file_path = shutil.which("obfs4proxy")
+            snowflake_file_path = shutil.which("snowflake-client")
+            meek_client_file_path = shutil.which("meek-client")
             prefix = os.path.dirname(os.path.dirname(tor_path))
             tor_geo_ip_file_path = os.path.join(prefix, "share/tor/geoip")
             tor_geo_ipv6_file_path = os.path.join(prefix, "share/tor/geoip6")
         elif self.platform == "Windows":
+            # In Windows, the Tor binaries are in the onionshare package, not the onionshare_cli package
             base_path = self.get_resource_path("tor")
+            base_path = base_path.replace("onionshare_cli", "onionshare")
             tor_path = os.path.join(base_path, "Tor", "tor.exe")
+
+            # If tor.exe isn't there, mayber we're running from the source tree
+            if not os.path.exists(tor_path):
+                base_path = os.path.join(os.getcwd(), "onionshare", "resources", "tor")
+
+                tor_path = os.path.join(base_path, "Tor", "tor.exe")
+                if not os.path.exists(tor_path):
+                    raise CannotFindTor()
+
             obfs4proxy_file_path = os.path.join(base_path, "Tor", "obfs4proxy.exe")
+            snowflake_file_path = os.path.join(base_path, "Tor", "snowflake-client.exe")
+            meek_client_file_path = os.path.join(base_path, "Tor", "meek-client.exe")
             tor_geo_ip_file_path = os.path.join(base_path, "Data", "Tor", "geoip")
             tor_geo_ipv6_file_path = os.path.join(base_path, "Data", "Tor", "geoip6")
+
         elif self.platform == "Darwin":
-            tor_path = shutil.which("tor")
-            if not tor_path:
-                raise CannotFindTor()
-            obfs4proxy_file_path = shutil.which("obfs4proxy")
-            prefix = os.path.dirname(os.path.dirname(tor_path))
-            tor_geo_ip_file_path = os.path.join(prefix, "share/tor/geoip")
-            tor_geo_ipv6_file_path = os.path.join(prefix, "share/tor/geoip6")
+            # Let's see if we have tor binaries in the onionshare GUI package
+            base_path = self.get_resource_path("tor")
+            base_path = base_path.replace("onionshare_cli", "onionshare")
+            tor_path = os.path.join(base_path, "tor")
+            if os.path.exists(tor_path):
+                obfs4proxy_file_path = os.path.join(base_path, "obfs4proxy")
+                snowflake_file_path = os.path.join(base_path, "snowflake-client")
+                meek_client_file_path = os.path.join(base_path, "meek-client")
+                tor_geo_ip_file_path = os.path.join(base_path, "geoip")
+                tor_geo_ipv6_file_path = os.path.join(base_path, "geoip6")
+            else:
+                # Fallback to looking in the path
+                tor_path = shutil.which("tor")
+                if not os.path.exists(tor_path):
+                    raise CannotFindTor()
+
+                obfs4proxy_file_path = shutil.which("obfs4proxy")
+                snowflake_file_path = shutil.which("snowflake-client")
+                meek_client_file_path = shutil.which("meek-client")
+                prefix = os.path.dirname(os.path.dirname(tor_path))
+                tor_geo_ip_file_path = os.path.join(prefix, "share/tor/geoip")
+                tor_geo_ipv6_file_path = os.path.join(prefix, "share/tor/geoip6")
+
         elif self.platform == "BSD":
             tor_path = "/usr/local/bin/tor"
             tor_geo_ip_file_path = "/usr/local/share/tor/geoip"
             tor_geo_ipv6_file_path = "/usr/local/share/tor/geoip6"
             obfs4proxy_file_path = "/usr/local/bin/obfs4proxy"
+            snowflake_file_path = "/usr/local/bin/snowflake-client"
+            meek_client_file_path = "/usr/local/bin/meek-client"
 
         return (
             tor_path,
             tor_geo_ip_file_path,
             tor_geo_ipv6_file_path,
             obfs4proxy_file_path,
+            snowflake_file_path,
+            meek_client_file_path,
         )
 
     def build_data_dir(self):
@@ -420,6 +466,18 @@ class Common:
 
         r = random.SystemRandom()
         return "-".join(r.choice(wordlist) for _ in range(word_count))
+
+    def is_flatpak(self):
+        """
+        Returns True if OnionShare is running in a Flatpak sandbox
+        """
+        return os.environ.get("FLATPAK_ID") == "org.onionshare.OnionShare"
+
+    def is_snapcraft(self):
+        """
+        Returns True if OnionShare is running in a Snapcraft sandbox
+        """
+        return os.environ.get("SNAP_INSTANCE_NAME") == "onionshare"
 
     @staticmethod
     def random_string(num_bytes, output_len=None):

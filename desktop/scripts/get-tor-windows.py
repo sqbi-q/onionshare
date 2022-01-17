@@ -2,7 +2,7 @@
 """
 OnionShare | https://onionshare.org/
 
-Copyright (C) 2014-2021 Micah Lee, et al. <micah@micahflee.com>
+Copyright (C) 2014-2022 Micah Lee, et al. <micah@micahflee.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -31,12 +31,14 @@ import shutil
 import subprocess
 import requests
 
+from bridges import UpdateTorBridges
+
 
 def main():
-    exe_url = "https://dist.torproject.org/torbrowser/11.0a7/torbrowser-install-11.0a7_en-US.exe"
-    exe_filename = "torbrowser-install-11.0a7_en-US.exe"
+    exe_url = "https://dist.torproject.org/torbrowser/11.0.4/torbrowser-install-11.0.4_en-US.exe"
+    exe_filename = "torbrowser-install-11.0.4_en-US.exe"
     expected_exe_sha256 = (
-        "8b2013669d88e3ae8fa9bc17a3495eaac9475f79a849354e826e5132811a860b"
+        "c7073f58f49a225bcf7668a5630e94f5f5e96fb7bed095feebf3bf8417bd3d07"
     )
     # Build paths
     root_path = os.path.dirname(
@@ -44,7 +46,7 @@ def main():
     )
     working_path = os.path.join(root_path, "build", "tor")
     exe_path = os.path.join(working_path, exe_filename)
-    dist_path = os.path.join(root_path, "src", "onionshare", "resources", "tor")
+    dist_path = os.path.join(root_path, "onionshare", "resources", "tor")
 
     # Make sure the working folder exists
     if not os.path.exists(working_path):
@@ -97,6 +99,9 @@ def main():
     shutil.copytree(
         os.path.join(working_path, "Data"), os.path.join(dist_path, "Data", "Tor")
     )
+
+    # Fetch the built-in bridges
+    UpdateTorBridges(root_path)
 
 
 if __name__ == "__main__":

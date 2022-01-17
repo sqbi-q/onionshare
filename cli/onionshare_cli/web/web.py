@@ -2,7 +2,7 @@
 """
 OnionShare | https://onionshare.org/
 
-Copyright (C) 2014-2021 Micah Lee, et al. <micah@micahflee.com>
+Copyright (C) 2014-2022 Micah Lee, et al. <micah@micahflee.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,6 +18,7 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 import logging
+import mimetypes
 import os
 import queue
 import requests
@@ -79,6 +80,16 @@ class Web:
         self.common.log("Web", "__init__", f"is_gui={is_gui}, mode={mode}")
 
         self.settings = mode_settings
+
+        # Flask guesses the MIME type of files from a database on the operating
+        # system.
+        # Some operating systems, or applications that can modify the database
+        # (such as the Windows Registry) can treat .js files as text/plain,
+        # which breaks the chat app due to X-Content-Type-Options: nosniff.
+        #
+        # It's probably #notourbug but we can fix it by forcing the mimetype.
+        # https://github.com/onionshare/onionshare/issues/1443
+        mimetypes.add_type("text/javascript", ".js")
 
         # The flask app
         self.app = Flask(
@@ -151,11 +162,17 @@ class Web:
         elif self.mode == "website":
             self.website_mode = WebsiteModeWeb(self.common, self)
         elif self.mode == "chat":
-            self.socketio = SocketIO()
+            if self.common.verbose:
+                self.socketio = SocketIO(
+                    async_mode="gevent", logger=True, engineio_logger=True
+                )
+            else:
+                self.socketio = SocketIO(async_mode="gevent")
             self.socketio.init_app(self.app)
             self.chat_mode = ChatModeWeb(self.common, self)
 
-        self.cleanup_filenames = []
+        self.cleanup_tempfiles = []
+        self.cleanup_tempdirs = []
 
     def get_mode(self):
         if self.mode == "share":
@@ -198,12 +215,20 @@ class Web:
             """
             for header, value in self.security_headers:
                 r.headers.set(header, value)
+
             # Set a CSP header unless in website mode and the user has disabled it
-            if not self.settings.get("website", "disable_csp") or self.mode != "website":
-                r.headers.set(
-                    "Content-Security-Policy",
-                    "default-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; img-src 'self' data:;",
-                )
+            default_csp = "default-src 'self'; frame-ancestors 'none'; form-action 'self'; base-uri 'self'; img-src 'self' data:;"
+            if self.mode != "website" or (
+                not self.settings.get("website", "disable_csp")
+                and not self.settings.get("website", "custom_csp")
+            ):
+                r.headers.set("Content-Security-Policy", default_csp)
+            else:
+                if self.settings.get("website", "custom_csp"):
+                    r.headers.set(
+                        "Content-Security-Policy",
+                        self.settings.get("website", "custom_csp"),
+                    )
             return r
 
         @self.app.errorhandler(404)
@@ -380,14 +405,13 @@ class Web:
         """
         self.common.log("Web", "cleanup")
 
-        # Cleanup files
-        try:
-            for filename in self.cleanup_filenames:
-                if os.path.isfile(filename):
-                    os.remove(filename)
-                elif os.path.isdir(filename):
-                    shutil.rmtree(filename)
-        except Exception:
-            # Don't crash if file is still in use
-            pass
-        self.cleanup_filenames = []
+        # Close all of the tempfile.NamedTemporaryFile
+        for file in self.cleanup_tempfiles:
+            file.close()
+
+        # Clean up the tempfile.NamedTemporaryDirectory objects
+        for dir in self.cleanup_tempdirs:
+            dir.cleanup()
+
+        self.cleanup_tempfiles = []
+        self.cleanup_tempdirs = []

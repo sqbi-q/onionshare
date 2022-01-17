@@ -2,7 +2,7 @@
 """
 OnionShare | https://onionshare.org/
 
-Copyright (C) 2014-2021 Micah Lee, et al. <micah@micahflee.com>
+Copyright (C) 2014-2022 Micah Lee, et al. <micah@micahflee.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -28,12 +28,7 @@ from datetime import timedelta
 
 from .common import Common, CannotFindTor
 from .web import Web
-from .onion import (
-    TorErrorProtocolError,
-    TorTooOldEphemeral,
-    TorTooOldStealth,
-    Onion,
-)
+from .onion import TorErrorProtocolError, TorTooOldEphemeral, TorTooOldStealth, Onion
 from .onionshare import OnionShare
 from .mode_settings import ModeSettings
 
@@ -94,12 +89,7 @@ def main(cwd=None):
         help="Filename of persistent session",
     )
     # General args
-    parser.add_argument(
-        "--title",
-        metavar="TITLE",
-        default=None,
-        help="Set a title",
-    )
+    parser.add_argument("--title", metavar="TITLE", default=None, help="Set a title")
     parser.add_argument(
         "--public",
         action="store_true",
@@ -160,7 +150,13 @@ def main(cwd=None):
         action="store_true",
         dest="disable_csp",
         default=False,
-        help="Publish website: Disable Content Security Policy header (allows your website to use third-party resources)",
+        help="Publish website: Disable the default Content Security Policy header (allows your website to use third-party resources)",
+    )
+    parser.add_argument(
+        "--custom_csp",
+        metavar="custom_csp",
+        default=None,
+        help="Publish website: Set a custom Content Security Policy header",
     )
     # Other
     parser.add_argument(
@@ -199,6 +195,7 @@ def main(cwd=None):
     disable_text = args.disable_text
     disable_files = args.disable_files
     disable_csp = bool(args.disable_csp)
+    custom_csp = args.custom_csp
     verbose = bool(args.verbose)
 
     # Verbose mode?
@@ -244,7 +241,15 @@ def main(cwd=None):
             mode_settings.set("receive", "disable_text", disable_text)
             mode_settings.set("receive", "disable_files", disable_files)
         if mode == "website":
-            mode_settings.set("website", "disable_csp", disable_csp)
+            if disable_csp and custom_csp:
+                print("You cannot disable the CSP and set a custom one. Either set --disable-csp or --custom-csp but not both.")
+                sys.exit()
+            if disable_csp:
+                mode_settings.set("website", "disable_csp", True)
+                mode_settings.set("website", "custom_csp", None)
+            if custom_csp:
+                mode_settings.set("website", "custom_csp", custom_csp)
+                mode_settings.set("website", "disable_csp", False)
     else:
         # See what the persistent mode was
         mode = mode_settings.get("persistent", "mode")
@@ -409,7 +414,7 @@ def main(cwd=None):
             sys.exit(1)
 
         # Warn about sending large files over Tor
-        if web.share_mode.download_filesize >= 157286400:  # 150mb
+        if web.share_mode.download_filesize >= 157_286_400:  # 150mb
             print("")
             print("Warning: Sending a large share could take hours")
             print("")
@@ -468,13 +473,13 @@ def main(cwd=None):
             if app.autostop_timer > 0:
                 # if the auto-stop timer was set and has run out, stop the server
                 if not app.autostop_timer_thread.is_alive():
-                    if mode == "share" or (mode == "website"):
+                    if mode == "share":
                         # If there were no attempts to download the share, or all downloads are done, we can stop
                         if web.share_mode.cur_history_id == 0 or web.done:
                             print("Stopped because auto-stop timer ran out")
                             web.stop(app.port)
                             break
-                    if mode == "receive":
+                    elif mode == "receive":
                         if (
                             web.receive_mode.cur_history_id == 0
                             or not web.receive_mode.uploads_in_progress
@@ -483,6 +488,11 @@ def main(cwd=None):
                             web.stop(app.port)
                             break
                         web.receive_mode.can_upload = False
+                    else:
+                        # website or chat mode
+                        print("Stopped because auto-stop timer ran out")
+                        web.stop(app.port)
+                        break
             # Allow KeyboardInterrupt exception to be handled with threads
             # https://stackoverflow.com/questions/3788208/python-threading-ignores-keyboardinterrupt-exception
             time.sleep(0.2)

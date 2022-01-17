@@ -2,7 +2,7 @@
 """
 OnionShare | https://onionshare.org/
 
-Copyright (C) 2014-2021 Micah Lee, et al. <micah@micahflee.com>
+Copyright (C) 2014-2022 Micah Lee, et al. <micah@micahflee.com>
 
 This program is free software: you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
@@ -18,17 +18,20 @@ You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
+from .censorship import CensorshipCircumvention
+from .meek import Meek
 from stem.control import Controller
 from stem import ProtocolError, SocketClosed
 from stem.connection import MissingPassword, UnreadableCookieFile, AuthenticationFailure
 import base64
 import nacl.public
 import os
-import tempfile
-import subprocess
-import time
-import shlex
 import psutil
+import shlex
+import subprocess
+import tempfile
+import time
+import traceback
 
 from distutils.version import LooseVersion as Version
 
@@ -153,6 +156,8 @@ class Onion(object):
             self.tor_geo_ip_file_path,
             self.tor_geo_ipv6_file_path,
             self.obfs4proxy_file_path,
+            self.snowflake_file_path,
+            self.meek_client_file_path,
         ) = get_tor_paths()
 
         # The tor process
@@ -178,10 +183,10 @@ class Onion(object):
         key_bytes = bytes(key)
         key_b32 = base64.b32encode(key_bytes)
         # strip trailing ====
-        assert key_b32[-4:] == b'===='
+        assert key_b32[-4:] == b"===="
         key_b32 = key_b32[:-4]
         # change from b'ASDF' to ASDF
-        s = key_b32.decode('utf-8')
+        s = key_b32.decode("utf-8")
         return s
 
     def connect(
@@ -198,8 +203,6 @@ class Onion(object):
             )
             return
 
-        self.common.log("Onion", "connect")
-
         # Either use settings that are passed in, or use them from common
         if custom_settings:
             self.settings = custom_settings
@@ -209,6 +212,12 @@ class Onion(object):
         else:
             self.common.load_settings()
             self.settings = self.common.settings
+
+        self.common.log(
+            "Onion",
+            "connect",
+            f"connection_type={self.settings.get('connection_type')}",
+        )
 
         # The Tor controller
         self.c = None
@@ -251,9 +260,7 @@ class Onion(object):
                         and cmdline[2] == self.tor_torrc
                     ):
                         self.common.log(
-                            "Onion",
-                            "connect",
-                            "found a stale tor process, killing it",
+                            "Onion", "connect", "found a stale tor process, killing it"
                         )
                         proc.terminate()
                         proc.wait()
@@ -302,45 +309,83 @@ class Onion(object):
             torrc_template = torrc_template.replace(
                 "{{socks_port}}", str(self.tor_socks_port)
             )
+            torrc_template = torrc_template.replace(
+                "{{obfs4proxy_path}}", str(self.obfs4proxy_file_path)
+            )
+            torrc_template = torrc_template.replace(
+                "{{snowflake_path}}", str(self.snowflake_file_path)
+            )
 
             with open(self.tor_torrc, "w") as f:
+                self.common.log("Onion", "connect", "Writing torrc template file")
                 f.write(torrc_template)
 
                 # Bridge support
-                if self.settings.get("tor_bridges_use_obfs4"):
-                    f.write(
-                        f"ClientTransportPlugin obfs4 exec {self.obfs4proxy_file_path}\n"
-                    )
-                    with open(
-                        self.common.get_resource_path("torrc_template-obfs4")
-                    ) as o:
-                        for line in o:
-                            f.write(line)
-                elif self.settings.get("tor_bridges_use_meek_lite_azure"):
-                    f.write(
-                        f"ClientTransportPlugin meek_lite exec {self.obfs4proxy_file_path}\n"
-                    )
-                    with open(
-                        self.common.get_resource_path("torrc_template-meek_lite_azure")
-                    ) as o:
-                        for line in o:
-                            f.write(line)
+                if self.settings.get("bridges_enabled"):
+                    f.write("\nUseBridges 1\n")
+                    if self.settings.get("bridges_type") == "built-in":
+                        use_torrc_bridge_templates = False
+                        builtin_bridge_type = self.settings.get("bridges_builtin_pt")
+                        # Use built-inbridges stored in settings, if they are there already.
+                        # They are probably newer than that of our hardcoded copies.
+                        if self.settings.get("bridges_builtin"):
+                            try:
+                                for line in self.settings.get("bridges_builtin")[
+                                    builtin_bridge_type
+                                ]:
+                                    if line.strip() != "":
+                                        f.write(f"Bridge {line}\n")
+                                self.common.log(
+                                    "Onion",
+                                    "connect",
+                                    "Wrote in the built-in bridges from OnionShare settings",
+                                )
+                            except KeyError:
+                                # Somehow we had built-in bridges in our settings, but
+                                # not for this bridge type. Fall back to using the hard-
+                                # coded templates.
+                                use_torrc_bridge_templates = True
+                        else:
+                            use_torrc_bridge_templates = True
+                        if use_torrc_bridge_templates:
+                            if builtin_bridge_type == "obfs4":
+                                with open(
+                                    self.common.get_resource_path(
+                                        "torrc_template-obfs4"
+                                    )
+                                ) as o:
+                                    f.write(o.read())
+                            elif builtin_bridge_type == "meek-azure":
+                                with open(
+                                    self.common.get_resource_path(
+                                        "torrc_template-meek_lite_azure"
+                                    )
+                                ) as o:
+                                    f.write(o.read())
+                            elif builtin_bridge_type == "snowflake":
+                                with open(
+                                    self.common.get_resource_path(
+                                        "torrc_template-snowflake"
+                                    )
+                                ) as o:
+                                    f.write(o.read())
+                            self.common.log(
+                                "Onion",
+                                "connect",
+                                "Wrote in the built-in bridges from torrc templates",
+                            )
+                    elif self.settings.get("bridges_type") == "moat":
+                        for line in self.settings.get("bridges_moat").split("\n"):
+                            if line.strip() != "":
+                                f.write(f"Bridge {line}\n")
 
-                if self.settings.get("tor_bridges_use_custom_bridges"):
-                    if "obfs4" in self.settings.get("tor_bridges_use_custom_bridges"):
-                        f.write(
-                            f"ClientTransportPlugin obfs4 exec {self.obfs4proxy_file_path}\n"
-                        )
-                    elif "meek_lite" in self.settings.get(
-                        "tor_bridges_use_custom_bridges"
-                    ):
-                        f.write(
-                            f"ClientTransportPlugin meek_lite exec {self.obfs4proxy_file_path}\n"
-                        )
-                    f.write(self.settings.get("tor_bridges_use_custom_bridges"))
-                    f.write("\nUseBridges 1")
+                    elif self.settings.get("bridges_type") == "custom":
+                        for line in self.settings.get("bridges_custom").split("\n"):
+                            if line.strip() != "":
+                                f.write(f"Bridge {line}\n")
 
             # Execute a tor subprocess
+            self.common.log("Onion", "connect", f"starting {self.tor_path} subprocess")
             start_ts = time.time()
             if self.common.platform == "Windows":
                 # In Windows, hide console window when opening tor.exe subprocess
@@ -353,16 +398,28 @@ class Onion(object):
                     startupinfo=startupinfo,
                 )
             else:
+                if self.common.is_snapcraft():
+                    env = None
+                else:
+                    env = {"LD_LIBRARY_PATH": os.path.dirname(self.tor_path)}
+
                 self.tor_proc = subprocess.Popen(
                     [self.tor_path, "-f", self.tor_torrc],
                     stdout=subprocess.PIPE,
                     stderr=subprocess.PIPE,
+                    env=env,
                 )
 
             # Wait for the tor controller to start
+            self.common.log("Onion", "connect", f"tor pid: {self.tor_proc.pid}")
             time.sleep(2)
 
+            return_code = self.tor_proc.poll()
+            if return_code != None:
+                self.common.log("Onion", "connect", f"tor process has terminated early: {return_code}")
+
             # Connect to the controller
+            self.common.log("Onion", "connect", "authenticating to tor controller")
             try:
                 if (
                     self.common.platform == "Windows"
@@ -375,6 +432,7 @@ class Onion(object):
                     self.c.authenticate()
             except Exception as e:
                 print("OnionShare could not connect to Tor:\n{}".format(e.args[0]))
+                print(traceback.format_exc())
                 raise BundledTorBroken(e.args[0])
 
             while True:
@@ -410,11 +468,7 @@ class Onion(object):
                 time.sleep(0.2)
 
                 # If using bridges, it might take a bit longer to connect to Tor
-                if (
-                    self.settings.get("tor_bridges_use_custom_bridges")
-                    or self.settings.get("tor_bridges_use_obfs4")
-                    or self.settings.get("tor_bridges_use_meek_lite_azure")
-                ):
+                if self.settings.get("bridges_enabled"):
                     # Only override timeout if a custom timeout has not been passed in
                     if connect_timeout == 120:
                         connect_timeout = 150
@@ -606,6 +660,14 @@ class Onion(object):
         # https://trac.torproject.org/projects/tor/ticket/28619
         self.supports_v3_onions = self.tor_version >= Version("0.3.5.7")
 
+        # Now that we are connected to Tor, if we are using built-in bridges,
+        # update them with the latest copy available from the Tor API
+        if (
+            self.settings.get("bridges_enabled")
+            and self.settings.get("bridges_type") == "built-in"
+        ):
+            self.update_builtin_bridges()
+
     def is_authenticated(self):
         """
         Returns True if the Tor connection is still working, or False otherwise.
@@ -650,16 +712,24 @@ class Onion(object):
                 )
                 raise TorTooOldStealth()
             else:
-                if key_type == "NEW" or not mode_settings.get("onion", "client_auth_priv_key"):
+                if key_type == "NEW" or not mode_settings.get(
+                    "onion", "client_auth_priv_key"
+                ):
                     # Generate a new key pair for Client Auth on new onions, or if
                     # it's a persistent onion but for some reason we don't them
                     client_auth_priv_key_raw = nacl.public.PrivateKey.generate()
                     client_auth_priv_key = self.key_str(client_auth_priv_key_raw)
-                    client_auth_pub_key = self.key_str(client_auth_priv_key_raw.public_key)
+                    client_auth_pub_key = self.key_str(
+                        client_auth_priv_key_raw.public_key
+                    )
                 else:
                     # These should have been saved in settings from the previous run of a persistent onion
-                    client_auth_priv_key = mode_settings.get("onion", "client_auth_priv_key")
-                    client_auth_pub_key = mode_settings.get("onion", "client_auth_pub_key")
+                    client_auth_priv_key = mode_settings.get(
+                        "onion", "client_auth_priv_key"
+                    )
+                    client_auth_pub_key = mode_settings.get(
+                        "onion", "client_auth_pub_key"
+                    )
 
         try:
             if not self.supports_stealth:
@@ -841,3 +911,68 @@ class Onion(object):
             return ("127.0.0.1", 9150)
         else:
             return (self.settings.get("socks_address"), self.settings.get("socks_port"))
+
+    def update_builtin_bridges(self):
+        """
+        Use the CensorshipCircumvention API to fetch the latest built-in bridges
+        and update them in settings.
+        """
+        builtin_bridges = False
+        meek = None
+        # Try obtaining bridges over Tor, if we're connected to it.
+        if self.is_authenticated:
+            self.common.log(
+                "Onion",
+                "update_builtin_bridges",
+                "Updating the built-in bridges. Trying over Tor first",
+            )
+            self.censorship_circumvention = CensorshipCircumvention(
+                self.common, None, self
+            )
+            builtin_bridges = self.censorship_circumvention.request_builtin_bridges()
+
+        if not builtin_bridges:
+            # Tor was not running or it failed to hit the Tor API.
+            # Fall back to using Meek (domain-fronting).
+            self.common.log(
+                "Onion",
+                "update_builtin_bridges",
+                "Updating the built-in bridges. Trying via Meek (no Tor)",
+            )
+            meek = Meek(self.common)
+            meek.start()
+            self.censorship_circumvention = CensorshipCircumvention(
+                self.common, meek, None
+            )
+            builtin_bridges = self.censorship_circumvention.request_builtin_bridges()
+            meek.cleanup()
+
+        if builtin_bridges:
+            # If we got to this point, we have bridges
+            self.common.log(
+                "Onion",
+                "update_builtin_bridges",
+                f"Obtained bridges: {builtin_bridges}",
+            )
+            if builtin_bridges["meek"]:
+                # Meek bridge needs to be defined as "meek_lite", not "meek",
+                # for it to work with obfs4proxy.
+                # We also refer to this bridge type as 'meek-azure' in our settings.
+                # So first, rename the key in the dict
+                builtin_bridges["meek-azure"] = builtin_bridges.pop("meek")
+                new_meek_bridges = []
+                # Now replace the values. They also need the url/front params appended
+                for item in builtin_bridges["meek-azure"]:
+                    newline = item.replace("meek", "meek_lite")
+                    new_meek_bridges.append(
+                        f"{newline} url=https://meek.azureedge.net/ front=ajax.aspnetcdn.com"
+                    )
+                builtin_bridges["meek-azure"] = new_meek_bridges
+            # Save the new settings
+            self.settings.set("bridges_builtin", builtin_bridges)
+            self.settings.save()
+        else:
+            self.common.log(
+                "Onion", "update_builtin_bridges", "Error getting built-in bridges"
+            )
+            return False
